@@ -30,7 +30,7 @@ app.get('/api/topics', (req, res) => {
   try {
     const db = getDb();
     const result = db.exec('SELECT id, name FROM topics');
-    const topics = result[0]?.values.map(([id, name]) => ({ id, name })) || [];
+    const topics = (result[0]?.values || []).map(([id, name]: unknown[]) => ({ id, name }));
     res.json(topics);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
