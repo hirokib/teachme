@@ -3,7 +3,7 @@ import './App.css';
 
 export function App() {
   return (
-    <main>
+    <main className="min-h-screen bg-gray-50 p-8">
       <Outlet />
     </main>
   );

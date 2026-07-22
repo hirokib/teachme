@@ -12,6 +12,9 @@
     "noEmit": true,
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "jsx": "react-jsx"
   },
   "include": ["src", "vite.config.ts"]
