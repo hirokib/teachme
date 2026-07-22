@@ -1,7 +1,14 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Request, Response } from 'express';
-import { createModels, type AuthEvent, type AuthPrompt, type Message } from '@earendil-works/pi-ai';
+import {
+  contentText,
+  createModels,
+  type AuthEvent,
+  type AuthPrompt,
+  type Context,
+  type Message,
+} from '@earendil-works/pi-ai';
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex';
 import { FileCredentialStore } from './credential-store.js';
 
@@ -38,6 +45,56 @@ async function promptLogin(prompt: AuthPrompt): Promise<string> {
 
 async function hasCredential(): Promise<boolean> {
   return Boolean(await credentials.read('openai-codex'));
+}
+
+function getModel() {
+  const modelId = process.env.OPENAI_CODEX_MODEL || 'gpt-5.4';
+  const model = models.getModel('openai-codex', modelId);
+  if (!model) throw new Error(`Unknown Codex model: ${modelId}`);
+  return model;
+}
+
+export async function isCodexConnected(): Promise<boolean> {
+  return hasCredential();
+}
+
+export async function completeCodex(context: Context): Promise<string> {
+  if (!(await hasCredential())) throw new Error('Sign in with ChatGPT first');
+  const message = await models.completeSimple(getModel(), context, { reasoning: 'medium' });
+  if (message.stopReason === 'error') throw new Error(message.errorMessage || 'Codex request failed');
+  return contentText(message.content).trim();
+}
+
+export async function completeCodexJson<T>(systemPrompt: string, prompt: string): Promise<T> {
+  const text = await completeCodex({
+    systemPrompt,
+    messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+  });
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  return JSON.parse(cleaned) as T;
+}
+
+export async function streamCodex(
+  context: Context,
+  onDelta: (delta: string) => void,
+  options: { signal?: AbortSignal; sessionId?: string } = {}
+): Promise<string> {
+  if (!(await hasCredential())) throw new Error('Sign in with ChatGPT first');
+  let reply = '';
+  const stream = models.streamSimple(getModel(), context, {
+    signal: options.signal,
+    sessionId: options.sessionId,
+    transport: 'auto',
+    reasoning: 'medium',
+  });
+  for await (const event of stream) {
+    if (event.type === 'text_delta') {
+      reply += event.delta;
+      onDelta(event.delta);
+    }
+    if (event.type === 'error') throw new Error(event.error.errorMessage || 'Codex request failed');
+  }
+  return reply;
 }
 
 export async function getCodexAuthStatus(_req: Request, res: Response): Promise<void> {
@@ -119,13 +176,6 @@ export async function codexChat(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const modelId = process.env.OPENAI_CODEX_MODEL || 'gpt-5.4';
-  const model = models.getModel('openai-codex', modelId);
-  if (!model) {
-    res.status(500).json({ error: `Unknown Codex model: ${modelId}` });
-    return;
-  }
-
   res.status(200);
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -137,15 +187,11 @@ export async function codexChat(req: Request, res: Response): Promise<void> {
   });
 
   try {
-    const stream = models.streamSimple(model, { messages: toPiMessages(messages) }, {
-      signal: abort.signal,
-      sessionId: req.header('x-session-id') || undefined,
-      transport: 'auto',
-    });
-    for await (const event of stream) {
-      if (event.type === 'text_delta') res.write(event.delta);
-      if (event.type === 'error') throw new Error(event.error.errorMessage || 'Codex request failed');
-    }
+    await streamCodex(
+      { messages: toPiMessages(messages) },
+      (delta) => res.write(delta),
+      { signal: abort.signal, sessionId: req.header('x-session-id') || undefined }
+    );
     res.end();
   } catch (error) {
     if (!res.headersSent) {

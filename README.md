@@ -10,6 +10,18 @@ TeachMe supports two server-side OpenAI authentication modes:
 ChatGPT OAuth credentials are stored locally in `backend/auth.json`, excluded
 from git, and refreshed by the backend. They are never sent to the frontend.
 
+## Learning workflow
+
+1. Describe a learning goal, current experience, desired outcome, and weekly time budget.
+2. Codex creates a persisted, ordered curriculum with observable objectives.
+3. Study each concept with a node-aware tutor that uses prior progress, notes, and misconceptions.
+4. Complete generated retrieval questions and receive structured, evidence-based feedback.
+5. TeachMe stores mastery, confidence, attempts, misconceptions, and the next review date,
+   then recommends the next learning action.
+
+Curriculum generation and assessment use structured JSON responses. Tutoring is streamed and
+uses a system prompt assembled from the current learning plan and learner state.
+
 sql.js is a WASM build of SQLite — no native module, so no C++ toolchain needed.
 
 ## Setup

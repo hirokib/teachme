@@ -16,6 +16,16 @@ import {
   logoutCodex,
   startCodexLogin,
 } from './codex.js';
+import {
+  getNodeById,
+  getPlanById,
+  getPlans,
+  patchNodeNote,
+  postAssessment,
+  postAssessmentQuestion,
+  postPlan,
+  postTutorMessage,
+} from './learning-api.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -60,6 +70,15 @@ app.get('/api/auth/codex', getCodexAuthStatus);
 app.post('/api/auth/codex/start', startCodexLogin);
 app.delete('/api/auth/codex', logoutCodex);
 app.post('/api/codex/chat', codexChat);
+
+app.get('/api/plans', getPlans);
+app.post('/api/plans', postPlan);
+app.get('/api/plans/:id', getPlanById);
+app.get('/api/nodes/:id', getNodeById);
+app.post('/api/nodes/:id/tutor', postTutorMessage);
+app.post('/api/nodes/:id/assessment-question', postAssessmentQuestion);
+app.post('/api/nodes/:id/assessments', postAssessment);
+app.patch('/api/nodes/:id/note', patchNodeNote);
 
 async function start() {
   await initDb();
