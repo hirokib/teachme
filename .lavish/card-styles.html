@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TeachMe — card & shadow directions</title>
+<style>
+  /* Tokens copied from frontend/src/App.css so this page IS the app's design system */
+  :root {
+    --background: oklch(0.99 0.006 285);
+    --foreground: oklch(0.21 0.02 285);
+    --card: oklch(1 0 0);
+    --primary: oklch(0.53 0.19 277);
+    --primary-foreground: oklch(0.99 0.005 285);
+    --muted: oklch(0.965 0.012 285);
+    --muted-foreground: oklch(0.52 0.03 285);
+    --accent: oklch(0.94 0.04 277);
+    --accent-foreground: oklch(0.38 0.12 277);
+    --success: oklch(0.62 0.14 158);
+    --success-foreground: oklch(0.99 0.005 158);
+    --warning: oklch(0.78 0.14 72);
+    --warning-foreground: oklch(0.28 0.06 72);
+    --border: oklch(0.91 0.012 285);
+    --radius: 0.75rem;
+    font-family: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; min-width: 0; }
+  body {
+    margin: 0;
+    padding: 32px 24px 96px;
+    background:
+      linear-gradient(to bottom, color-mix(in oklab, var(--accent) 45%, transparent), var(--background) 420px),
+      var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 2rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .lede { color: var(--muted-foreground); max-width: 60ch; margin: 0 0 8px; line-height: 1.55; }
+  .eyebrow {
+    display: inline-block; background: var(--accent); color: var(--accent-foreground);
+    border-radius: 999px; padding: 4px 12px; font-size: 0.75rem; font-weight: 600; margin-bottom: 12px;
+  }
+  h2 { font-size: 1.05rem; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted-foreground); font-size: 0.85rem; margin: 4px 0 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78em;
+    background: var(--muted); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+
+  /* ---------- the five directions ---------- */
+  .demo { --pop: var(--primary); }
+
+  /* A — current: 2px colored border + 5px colored offset */
+  .demo.a .surface { border: 2px solid var(--pop); box-shadow: 5px 5px 0 0 var(--pop); }
+  /* B — bolder: 3px ink border + 8px colored offset */
+  .demo.b .surface { border: 3px solid var(--foreground); box-shadow: 8px 8px 0 0 var(--pop); }
+  /* C — classic brutalist: 2px ink border + 6px ink shadow, color only as fills */
+  .demo.c .surface { border: 2px solid var(--foreground); box-shadow: 6px 6px 0 0 var(--foreground); }
+  /* D — light touch: hairline border + colored offset, no heavy outline */
+  .demo.d .surface { border: 1px solid color-mix(in oklab, var(--pop) 35%, transparent);
+                     box-shadow: 6px 6px 0 0 color-mix(in oklab, var(--pop) 22%, transparent); }
+  /* E — soft Figma elevation */
+  .demo.e .surface { border: 1px solid var(--border);
+                     box-shadow: 0 1px 2px oklch(0.21 0.02 285 / 6%), 0 10px 26px oklch(0.21 0.02 285 / 8%); }
+
+  .surface { background: var(--card); border-radius: var(--radius);
+    transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .surface.tap:hover { transform: translate(-2px, -2px); }
+  .demo.a .surface.tap:hover { box-shadow: 7px 7px 0 0 var(--pop); }
+  .demo.b .surface.tap:hover { box-shadow: 10px 10px 0 0 var(--pop); }
+  .demo.c .surface.tap:hover { box-shadow: 8px 8px 0 0 var(--foreground); }
+  .demo.d .surface.tap:hover { box-shadow: 8px 8px 0 0 color-mix(in oklab, var(--pop) 22%, transparent); }
+  .demo.e .surface.tap:hover { box-shadow: 0 2px 4px oklch(0.21 0.02 285 / 8%), 0 16px 34px oklch(0.21 0.02 285 / 10%); }
+
+  .pop-success { --pop: var(--success); }
+  .pop-warning { --pop: var(--warning); }
+
+  /* ---------- sample components ---------- */
+  .options { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); margin-top: 28px; }
+  .option { display: grid; gap: 14px; align-content: start;
+    border: 1px dashed var(--border); border-radius: 18px; padding: 20px; background: color-mix(in oklab, var(--card) 65%, transparent); }
+  .option > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted-foreground); white-space: nowrap; }
+  .specimens { display: grid; gap: 16px; margin-top: 2px; }
+
+  .plan-card { padding: 18px; }
+  .plan-card h3 { margin: 0; font-size: 0.95rem; }
+  .plan-card p { margin: 8px 0 0; font-size: 0.82rem; color: var(--muted-foreground); line-height: 1.5; }
+  .plan-card .go { margin-top: 14px; font-size: 0.75rem; font-weight: 600; color: var(--primary); }
+
+  .row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px; }
+  .step { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center;
+    font-size: 0.8rem; font-weight: 600; background: var(--success); color: var(--success-foreground); }
+  .row .title { font-size: 0.87rem; font-weight: 600; }
+  .row .obj { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 2px; }
+  .row .score { font-size: 0.85rem; font-weight: 700; color: var(--success); text-align: right; }
+
+  .chat { background: var(--muted); border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+  .bubble-user { margin-left: 40px; background: var(--primary); color: var(--primary-foreground);
+    border-radius: 16px 16px 4px 16px; padding: 10px 12px; font-size: 0.8rem; }
+  .bubble-tutor { margin-right: 28px; border-radius: 16px 16px 16px 4px; padding: 10px 12px; font-size: 0.8rem; line-height: 1.5; }
+  .bubble-tutor b { font-weight: 650; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { font: inherit; font-size: 0.8rem; font-weight: 600; padding: 8px 14px; border-radius: 10px;
+    background: var(--primary); color: var(--primary-foreground); cursor: pointer; }
+  .btn.ghost { background: var(--card); color: var(--foreground); }
+  .demo.a .btn { border-color: var(--foreground); box-shadow: 5px 5px 0 0 var(--foreground); }
+  .demo.d .btn { border-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+                 box-shadow: 5px 5px 0 0 color-mix(in oklab, var(--foreground) 25%, transparent); }
+  .btn:active { transform: translate(2px, 2px); }
+
+  .notes { font-size: 0.78rem; color: var(--muted-foreground); line-height: 1.55; margin: 0; }
+  .notes b { color: var(--foreground); font-weight: 600; }
+
+  /* ---------- answer form ---------- */
+  .ask { margin-top: 34px; background: var(--card); border: 2px solid var(--foreground);
+    box-shadow: 6px 6px 0 0 var(--foreground); border-radius: var(--radius); padding: 22px; }
+  .ask h2 { margin-bottom: 4px; }
+  fieldset { border: 0; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+  legend { font-size: 0.8rem; font-weight: 700; padding: 0; }
+  label.choice { display: flex; gap: 10px; align-items: baseline; font-size: 0.85rem;
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: var(--background); }
+  label.choice:hover { border-color: var(--primary); }
+  label.choice span.hint { color: var(--muted-foreground); font-size: 0.78rem; }
+  .ask textarea { width: 100%; min-height: 70px; margin-top: 14px; font: inherit; font-size: 0.85rem;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: inherit; }
+  .ask button { margin-top: 14px; font: inherit; font-size: 0.85rem; font-weight: 650; cursor: pointer;
+    background: var(--primary); color: var(--primary-foreground); border: 2px solid var(--foreground);
+    box-shadow: 4px 4px 0 0 var(--foreground); border-radius: 10px; padding: 9px 16px; }
+  .ask button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 0 var(--foreground); }
+  .cols { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">✦ Design decision</p>
+  <h1>How bold should the cards be?</h1>
+  <p class="lede">Same four TeachMe components rendered five ways. <b>A is what's live right now.</b> Everything uses the real app tokens, so what you pick is what you'll see. Annotate anything, or answer at the bottom.</p>
+
+  <div class="options">
+
+    <!-- A -->
+    <section class="option demo a">
+      <header>
+        <div><h2>A · Colored border + colored shadow</h2><p class="sub">Currently shipped. <code>2px</code> border, <code>5px 5px 0</code>, both in the state color.</p></div>
+        <span class="tag">live</span>
+      </header>
+      <div class="specimens">
+        <div class="surface tap plan-card"><h3>Genetic Algorithms Basics</h3><p>Understand how search and fitness drive evolution.</p><div class="go">Open learning plan →</div></div>
+        <div class="surface tap row pop-success"><span class="step">✓</span><span><span class="title">Search & Optimization</span><span class="obj">Define a search space and an objective</span></span><span class="score">85%</span></div>
+        <div class="chat"><div class="bubble-user">I don't know enough to say</div><div class="surface bubble-tutor">That's fine. The next idea is <b>knobs you can turn</b>.</div></div>
+        <div class="btns"><button class="btn surface">Begin lesson</button><button class="btn ghost surface">Explain simply</button></div>
+      </div>
+      <p class="notes"><b>Cost:</b> the colored outline stacks with colored fills — at full page scale it can read busy.</p>
+    </section>
+
+    <!-- B -->
+    <section class="option demo b">
+      <header>
+        <div><h2>B · Ink border + colored shadow</h2><p class="sub">Chunkier. <code>3px</code> ink outline, <code>8px 8px 0</code> in the state color.</p></div>
+        <span class="tag">boldest</span>
+      </header>
+      <div class="specimens">
+        <div class="surface tap plan-card"><h3>Genetic Algorithms Basics</h3><p>Understand how search and fitness drive evolution.</p><div class="go">Open learning plan →</div></div>
+        <div class="surface tap row pop-success"><span class="step">✓</span><span><span class="title">Search & Optimization</span><span class="obj">Define a search space and an objective</span></span><span class="score">85%</span></div>
+        <div class="chat"><div class="bubble-user">I don't know enough to say</div><div class="surface bubble-tutor">That's fine. The next idea is <b>knobs you can turn</b>.</div></div>
+        <div class="btns"><button class="btn surface">Begin lesson</button><button class="btn ghost surface">Explain simply</button></div>
+      </div>
+      <p class="notes"><b>Feel:</b> flashcards / classroom poster. Strongest "education" read; color still signals mastery. <b>Cost:</b> heaviest on long text panels.</p>
+    </section>
+
+    <!-- C -->
+    <section class="option demo c">
+      <header>
+        <div><h2>C · All ink</h2><p class="sub">Border and shadow both ink; color lives only in fills and badges.</p></div>
+        <span class="tag">calmest bold</span>
+      </header>
+      <div class="specimens">
+        <div class="surface tap plan-card"><h3>Genetic Algorithms Basics</h3><p>Understand how search and fitness drive evolution.</p><div class="go">Open learning plan →</div></div>
+        <div class="surface tap row"><span class="step">✓</span><span><span class="title">Search & Optimization</span><span class="obj">Define a search space and an objective</span></span><span class="score">85%</span></div>
+        <div class="chat"><div class="bubble-user">I don't know enough to say</div><div class="surface bubble-tutor">That's fine. The next idea is <b>knobs you can turn</b>.</div></div>
+        <div class="btns"><button class="btn surface">Begin lesson</button><button class="btn ghost surface">Explain simply</button></div>
+      </div>
+      <p class="notes"><b>Cost:</b> mastery state no longer readable from across the room — only from the badge.</p>
+    </section>
+
+    <!-- D -->
+    <section class="option demo d">
+      <header>
+        <div><h2>D · Tinted shadow, hairline border</h2><p class="sub">Offset shadow at 22% opacity, <code>1px</code> border. Sticker geometry, quiet weight.</p></div>
+        <span class="tag">softest offset</span>
+      </header>
+      <div class="specimens">
+        <div class="surface tap plan-card"><h3>Genetic Algorithms Basics</h3><p>Understand how search and fitness drive evolution.</p><div class="go">Open learning plan →</div></div>
+        <div class="surface tap row pop-success"><span class="step">✓</span><span><span class="title">Search & Optimization</span><span class="obj">Define a search space and an objective</span></span><span class="score">85%</span></div>
+        <div class="chat"><div class="bubble-user">I don't know enough to say</div><div class="surface bubble-tutor">That's fine. The next idea is <b>knobs you can turn</b>.</div></div>
+        <div class="btns"><button class="btn surface">Begin lesson</button><button class="btn ghost surface">Explain simply</button></div>
+      </div>
+      <p class="notes"><b>Feel:</b> the Figma-canvas read specifically. <b>Cost:</b> loses the tactile snap on click.</p>
+    </section>
+
+    <!-- E -->
+    <section class="option demo e">
+      <header>
+        <div><h2>E · Soft elevation</h2><p class="sub">No offset at all — blurred two-layer shadow. Baseline for comparison.</p></div>
+        <span class="tag">baseline</span>
+      </header>
+      <div class="specimens">
+        <div class="surface tap plan-card"><h3>Genetic Algorithms Basics</h3><p>Understand how search and fitness drive evolution.</p><div class="go">Open learning plan →</div></div>
+        <div class="surface tap row"><span class="step">✓</span><span><span class="title">Search & Optimization</span><span class="obj">Define a search space and an objective</span></span><span class="score">85%</span></div>
+        <div class="chat"><div class="bubble-user">I don't know enough to say</div><div class="surface bubble-tutor">That's fine. The next idea is <b>knobs you can turn</b>.</div></div>
+        <div class="btns"><button class="btn surface">Begin lesson</button><button class="btn ghost surface">Explain simply</button></div>
+      </div>
+      <p class="notes"><b>Cost:</b> generic SaaS. Nothing about it says "learning".</p>
+    </section>
+
+  </div>
+
+  <form class="ask" data-lavish-question="cards" onsubmit="
+    event.preventDefault();
+    const f = new FormData(event.currentTarget);
+    const style = f.get('style'), scope = f.get('scope'), notes = (f.get('notes')||'').toString().trim();
+    if (!style) return;
+    window.lavish.queuePrompt(
+      'Card design decision → use direction ' + style + '. Scope: ' + scope + (notes ? '. Notes: ' + notes : ''),
+      { tag: 'decision', text: 'Direction ' + style + ' · ' + scope, element: event.currentTarget,
+        data: { style: style, scope: scope, notes: notes } });
+  ">
+    <h2>Pick a direction</h2>
+    <p class="sub">One prompt gets queued when you submit — nothing is sent while you're still deciding.</p>
+    <div class="cols">
+      <fieldset>
+        <legend>Direction</legend>
+        <label class="choice"><input type="radio" name="style" value="A" checked /> <span><b>A</b> <span class="hint">— colored border + colored shadow (current)</span></span></label>
+        <label class="choice"><input type="radio" name="style" value="B" /> <span><b>B</b> <span class="hint">— ink border + colored shadow, chunkier</span></span></label>
+        <label class="choice"><input type="radio" name="style" value="C" /> <span><b>C</b> <span class="hint">— all ink</span></span></label>
+        <label class="choice"><input type="radio" name="style" value="D" /> <span><b>D</b> <span class="hint">— tinted offset, hairline border</span></span></label>
+        <label class="choice"><input type="radio" name="style" value="E" /> <span><b>E</b> <span class="hint">— soft elevation</span></span></label>
+      </fieldset>
+      <fieldset>
+        <legend>How far it goes</legend>
+        <label class="choice"><input type="radio" name="scope" value="cards + buttons" checked /> <span>Cards + buttons <span class="hint">— chat bubbles stay soft</span></span></label>
+        <label class="choice"><input type="radio" name="scope" value="cards, buttons, and chat bubbles" /> <span>+ chat bubbles</span></label>
+        <label class="choice"><input type="radio" name="scope" value="everything including inputs, badges, and nav" /> <span>Everything <span class="hint">— inputs, badges, nav too</span></span></label>
+        <label class="choice"><input type="radio" name="scope" value="cards only" /> <span>Cards only</span></label>
+      </fieldset>
+    </div>
+    <textarea name="notes" placeholder="Anything to tweak — offset distance, border weight, radius, where color should come from…"></textarea>
+    <button type="submit">Queue this answer</button>
+  </form>
+</div>
+</body>
+</html>

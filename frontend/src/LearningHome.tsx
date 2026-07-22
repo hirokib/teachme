@@ -37,30 +37,30 @@ export function LearningHome() {
   return (
     <div className="mx-auto max-w-5xl space-y-10">
       <section className="max-w-2xl">
-        <p className="mb-2 text-sm font-medium text-muted-foreground">Adaptive learning workspace</p>
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">✦ Adaptive learning workspace</p>
         <h1 className="text-4xl font-semibold tracking-tight">What do you want to understand?</h1>
         <p className="mt-3 text-muted-foreground">
           TeachMe creates a focused path, teaches one concept at a time, and checks what you can actually explain.
         </p>
       </section>
 
-      <form onSubmit={submit} className="grid gap-5 rounded-xl border bg-card p-6 shadow-sm">
+      <form onSubmit={submit} className="pop grid gap-5 rounded-2xl bg-card p-6">
         <label className="grid gap-2 text-sm font-medium">
           Learning goal
-          <input required value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="Understand linear algebra" className="rounded-md border bg-background px-3 py-2 font-normal" />
+          <input required value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="Understand linear algebra" className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
         </label>
         <div className="grid gap-5 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium">
             What do you already know?
-            <textarea required value={experience} onChange={(event) => setExperience(event.target.value)} placeholder="I know high-school algebra, but matrices are new." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal" />
+            <textarea required value={experience} onChange={(event) => setExperience(event.target.value)} placeholder="I know high-school algebra, but matrices are new." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             What should you be able to do?
-            <textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Understand transformations and solve practical problems." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal" />
+            <textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Understand transformations and solve practical problems." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
           </label>
         </div>
         <div className="flex items-center gap-4">
-          <Button type="submit" disabled={creating}>{creating ? 'Designing your path…' : 'Create learning plan'}</Button>
+          <Button type="submit" className="pop pop-ink rounded-xl" disabled={creating}>{creating ? 'Designing your path…' : 'Create learning plan'}</Button>
           <span className="text-sm text-muted-foreground">Requires ChatGPT sign-in</span>
         </div>
         {error && <p className="text-sm text-destructive">{error} {error.includes('Sign in') && <Link to="/chat" className="underline">Open sign-in</Link>}</p>}
@@ -73,10 +73,10 @@ export function LearningHome() {
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {plans.map((plan) => (
-              <Link key={plan.id} to="/plans/$planId" params={{ planId: String(plan.id) }} className="rounded-lg border bg-card p-5 transition hover:border-foreground/30 hover:shadow-sm">
+              <Link key={plan.id} to="/plans/$planId" params={{ planId: String(plan.id) }} className="pop rounded-2xl bg-card p-5">
                 <h3 className="font-semibold">{plan.title}</h3>
                 <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{plan.goal}</p>
-                <p className="mt-4 text-xs text-muted-foreground">Open learning plan →</p>
+                <p className="mt-4 text-xs font-medium text-primary">Open learning plan →</p>
               </Link>
             ))}
           </div>
