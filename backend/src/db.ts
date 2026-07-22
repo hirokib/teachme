@@ -1,8 +1,11 @@
 import initSqlJs, { Database } from 'sql.js';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'teachme.db');
+// ESM has no __dirname — derive it from the module URL.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const DB_PATH = process.env.DB_PATH || path.join(here, '..', 'teachme.db');
 let db: Database | null = null;
 
 export async function initDb() {

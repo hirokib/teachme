@@ -1,6 +1,15 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { initDb, getDb } from './db';
+import { openai } from '@ai-sdk/openai';
+import {
+  convertToModelMessages,
+  pipeUIMessageStreamToResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from 'ai';
+import { initDb, getDb } from './db.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +28,26 @@ app.get('/api/hello', (_req, res) => {
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+// Provider lives here and nowhere else — swap `@ai-sdk/openai` for another
+// @ai-sdk/* package and this is the only line that changes.
+const model = openai(process.env.OPENAI_MODEL || 'gpt-4o-mini');
+
+app.post('/api/chat', async (req, res) => {
+  const { messages } = req.body as { messages?: UIMessage[] };
+  if (!Array.isArray(messages)) {
+    return res.status(400).json({ error: 'messages must be an array' });
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY is not set' });
+  }
+
+  const result = streamText({ model, messages: await convertToModelMessages(messages) });
+  pipeUIMessageStreamToResponse({
+    response: res,
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
 });
 
 async function start() {

@@ -1,10 +1,5 @@
 # TeachMe
 
-Hello-world scaffold: TypeScript + Express + sql.js backend, React + Vite +
-TanStack Query/Router frontend.
-
-`GET /api/hello` reads a greeting out of SQLite; the frontend fetches it with
-TanStack Query and renders it on the `/` route.
 
 sql.js is a WASM build of SQLite — no native module, so no C++ toolchain needed.
 
