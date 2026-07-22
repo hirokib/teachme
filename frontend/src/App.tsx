@@ -1,7 +1,20 @@
+import { useEffect } from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
 import './App.css';
 
 export function App() {
+  useEffect(() => {
+    function submitOnCommandEnter(event: KeyboardEvent) {
+      if (event.key !== 'Enter' || !event.metaKey || event.defaultPrevented || event.repeat) return;
+      const form = event.target instanceof Element ? event.target.closest('form') : null;
+      if (!(form instanceof HTMLFormElement)) return;
+      event.preventDefault();
+      form.requestSubmit();
+    }
+    document.addEventListener('keydown', submitOnCommandEnter);
+    return () => document.removeEventListener('keydown', submitOnCommandEnter);
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-accent/40 to-background text-foreground">
       <nav className="border-b bg-card/80 px-6 py-4 backdrop-blur">
