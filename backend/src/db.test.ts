@@ -11,17 +11,37 @@ process.env.DB_PATH = TMP_DB;
 
 async function main() {
   fs.rmSync(TMP_DB, { force: true });
+  const initSqlJs = (await import('sql.js')).default;
+  const SQL = await initSqlJs();
+  const legacy = new SQL.Database();
+  legacy.run(`
+    CREATE TABLE learning_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      current_experience TEXT NOT NULL,
+      target_outcome TEXT NOT NULL,
+      time_budget_minutes INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  fs.writeFileSync(TMP_DB, Buffer.from(legacy.export()));
 
   // Imported here, not at top level, so DB_PATH is set before db.ts reads it.
   const { initDb, getDb, saveDb } = await import('./db.js');
 
   const db = await initDb();
+  const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0]?.values ?? [];
+  assert.ok(
+    !planColumns.some((column) => column[1] === 'time_budget_minutes'),
+    'legacy time budget column must be removed'
+  );
   db.run('UPDATE greetings SET message = ? WHERE id = 1', ['Hello Again']);
   saveDb();
 
   // Simulate a hard kill: re-read the file with no exit handler ever running.
-  const initSqlJs = (await import('sql.js')).default;
-  const SQL = await initSqlJs();
   const reloaded = new SQL.Database(fs.readFileSync(TMP_DB));
   const rows = reloaded.exec('SELECT message FROM greetings WHERE id = 1');
 
@@ -41,7 +61,6 @@ async function main() {
     goal: 'Learn testing',
     currentExperience: 'Beginner',
     targetOutcome: 'Write a useful test',
-    timeBudgetMinutes: 60,
     nodes: [
       {
         title: 'Assertions',

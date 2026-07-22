@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
+import { Prose } from './Prose';
 import {
   assessAnswer,
   generateQuestion,

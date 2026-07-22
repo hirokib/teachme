@@ -26,7 +26,7 @@ const Message = memo(function Message({
       {message.role === 'user' ? (
         <span className="whitespace-pre-wrap">{message.text}</span>
       ) : message.text ? (
-        <Prose>{message.text}</Prose>
+        <Prose className="inline">{message.text}</Prose>
       ) : (
         pending && 'Thinking…'
       )}

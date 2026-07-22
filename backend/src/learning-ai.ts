@@ -18,11 +18,10 @@ export async function generateCurriculum(input: {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
-  timeBudgetMinutes: number;
 }): Promise<CurriculumResponse> {
   const result = await completeCodexJson<CurriculumResponse>(
     CURRICULUM_SYSTEM,
-    `Learning goal: ${input.goal}\nCurrent experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}\nAvailable time: ${input.timeBudgetMinutes} minutes per week.`
+    `Learning goal: ${input.goal}\nCurrent experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}`
   );
   const validNode = (node: CurriculumNodeInput): boolean =>
     Boolean(

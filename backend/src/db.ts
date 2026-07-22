@@ -28,7 +28,6 @@ export async function initDb() {
       goal TEXT NOT NULL,
       current_experience TEXT NOT NULL,
       target_outcome TEXT NOT NULL,
-      time_budget_minutes INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -94,6 +93,11 @@ export async function initDb() {
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
   `);
+
+  const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0];
+  if (planColumns?.values.some((column) => column[1] === 'time_budget_minutes')) {
+    db.run('ALTER TABLE learning_plans DROP COLUMN time_budget_minutes');
+  }
 
   db.run('PRAGMA foreign_keys = ON');
 

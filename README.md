@@ -12,7 +12,7 @@ from git, and refreshed by the backend. They are never sent to the frontend.
 
 ## Learning workflow
 
-1. Describe a learning goal, current experience, desired outcome, and weekly time budget.
+1. Describe a learning goal, current experience, and desired outcome.
 2. Codex creates a persisted, ordered curriculum with observable objectives.
 3. Study each concept with a node-aware tutor that uses prior progress, notes, and misconceptions.
 4. Complete generated retrieval questions and receive structured, evidence-based feedback.

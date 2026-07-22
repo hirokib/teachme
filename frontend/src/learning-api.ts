@@ -6,7 +6,6 @@ export type LearningPlan = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
-  timeBudgetMinutes: number;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -72,7 +71,6 @@ export async function createLearningPlan(input: {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
-  timeBudgetMinutes: number;
 }): Promise<PlanDetail> {
   return json(
     await fetch(`${API_URL}/api/plans`, {

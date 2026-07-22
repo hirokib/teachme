@@ -27,15 +27,9 @@ export async function postPlan(req: Request, res: Response): Promise<void> {
     goal: string;
     currentExperience: string;
     targetOutcome: string;
-    timeBudgetMinutes: number;
   }>;
   if (!body.goal?.trim() || !body.currentExperience?.trim() || !body.targetOutcome?.trim()) {
     res.status(400).json({ error: 'Goal, current experience, and target outcome are required' });
-    return;
-  }
-  const timeBudgetMinutes = Number(body.timeBudgetMinutes);
-  if (!Number.isFinite(timeBudgetMinutes) || timeBudgetMinutes < 15 || timeBudgetMinutes > 2400) {
-    res.status(400).json({ error: 'Time budget must be between 15 and 2400 minutes' });
     return;
   }
   if (!(await isCodexConnected())) {
@@ -47,14 +41,12 @@ export async function postPlan(req: Request, res: Response): Promise<void> {
     goal: body.goal.trim(),
     currentExperience: body.currentExperience.trim(),
     targetOutcome: body.targetOutcome.trim(),
-    timeBudgetMinutes,
   });
   const result = createPlan({
     title: generated.title,
     goal: body.goal.trim(),
     currentExperience: body.currentExperience.trim(),
     targetOutcome: body.targetOutcome.trim(),
-    timeBudgetMinutes,
     nodes: generated.nodes,
   });
   res.status(201).json(result);
