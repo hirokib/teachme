@@ -142,21 +142,30 @@ body,
 @layer utilities {
   .pop {
     --pop: var(--primary);
+    --pop-offset: 8px;
     /* chroma bumped, alpha dropped: reads as colour, not as grey */
     --pop-tint: oklch(from var(--pop) l calc(c * 1.5) h / 0.19);
     border: 1px solid oklch(from var(--pop) l calc(c * 1.5) h / 0.3);
-    box-shadow: 8px 8px 0 0 var(--pop-tint);
+    box-shadow: var(--pop-offset) var(--pop-offset) 0 0 var(--pop-tint);
     transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  /* buttons are ~1/10th the area of a card; the card offset reads as a drop shadow
+     the size of the control itself. Half it, and lighten the tint to match. */
+  a.pop,
+  button.pop {
+    --pop-offset: 3px;
+    /* small offset = less area to read colour from, so push chroma up and alpha down */
+    --pop-tint: oklch(from var(--pop) l calc(c * 2.2) h / 0.3);
   }
   a.pop:hover,
   button.pop:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 10px 10px 0 0 var(--pop-tint);
+    transform: translate(-1px, -1px);
+    --pop-offset: 4px;
   }
   a.pop:active,
   button.pop:active {
-    transform: translate(2px, 2px);
-    box-shadow: 4px 4px 0 0 var(--pop-tint);
+    transform: translate(1px, 1px);
+    --pop-offset: 2px;
   }
   .pop-success {
     --pop: var(--success);
