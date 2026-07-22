@@ -1,21 +1,13 @@
-import { RootRoute, Route } from '@tanstack/react-router';
+import { createRootRoute, createRoute } from '@tanstack/react-router';
 import { App } from './App';
-import { Topics } from './pages/Topics';
+import { Hello } from './Hello';
 
-const rootRoute = new RootRoute({
-  component: () => <App />,
-});
+const rootRoute = createRootRoute({ component: App });
 
-const topicsRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: '/topics',
-  component: Topics,
-});
-
-const indexRoute = new Route({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => <div className="p-4"><h1 className="text-2xl">Welcome to TeachMe</h1></div>,
+  component: Hello,
 });
 
-export const routeTree = rootRoute.addChildren([indexRoute, topicsRoute]);
+export const routeTree = rootRoute.addChildren([indexRoute]);

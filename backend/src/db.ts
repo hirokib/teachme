@@ -2,7 +2,7 @@ import initSqlJs, { Database } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
 
-const DB_PATH = path.join(__dirname, '..', 'teachme.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'teachme.db');
 let db: Database | null = null;
 
 export async function initDb() {
@@ -11,12 +11,12 @@ export async function initDb() {
   db = data ? new SQL.Database(data) : new SQL.Database();
 
   db.run(`
-    CREATE TABLE IF NOT EXISTS topics (
+    CREATE TABLE IF NOT EXISTS greetings (
       id INTEGER PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      message TEXT NOT NULL
     )
   `);
+  db.run(`INSERT OR IGNORE INTO greetings (id, message) VALUES (1, 'Hello World')`);
 
   saveDb();
   return db;
@@ -27,11 +27,10 @@ export function getDb(): Database {
   return db;
 }
 
-function saveDb() {
+// ponytail: full-file rewrite on every write. Fine at this size; batch or
+// swap for a real driver if the db outgrows a few MB.
+export function saveDb() {
   if (db) {
-    const data = db.export();
-    fs.writeFileSync(DB_PATH, Buffer.from(data));
+    fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
   }
 }
-
-process.on('exit', saveDb);

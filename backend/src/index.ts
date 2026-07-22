@@ -8,32 +8,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.post('/api/topics', (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Name required' });
-
+app.get('/api/hello', (_req, res) => {
   try {
-    const db = getDb();
-    db.run('INSERT INTO topics (name) VALUES (?)', [name]);
-    const result = db.exec('SELECT last_insert_rowid() as id');
-    res.json({ id: result[0]?.values[0]?.[0] || null, name });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/topics', (req, res) => {
-  try {
-    const db = getDb();
-    const result = db.exec('SELECT id, name FROM topics');
-    const topics = (result[0]?.values || []).map(([id, name]: unknown[]) => ({ id, name }));
-    res.json(topics);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const rows = getDb().exec('SELECT message FROM greetings WHERE id = 1');
+    res.json({ message: rows[0]?.values[0]?.[0] ?? 'Hello World' });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

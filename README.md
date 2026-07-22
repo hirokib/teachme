@@ -1,6 +1,12 @@
 # TeachMe
 
-An interactive learning platform built with TypeScript, React, and sql.js.
+Hello-world scaffold: TypeScript + Express + sql.js backend, React + Vite +
+TanStack Query/Router frontend.
+
+`GET /api/hello` reads a greeting out of SQLite; the frontend fetches it with
+TanStack Query and renders it on the `/` route.
+
+sql.js is a WASM build of SQLite — no native module, so no C++ toolchain needed.
 
 ## Setup
 
@@ -38,6 +44,12 @@ cd frontend && npm run dev
 ```bash
 cd backend && npm run lint && npm run format
 cd frontend && npm run lint && npm run format
+```
+
+## Tests
+
+```bash
+cd backend && npm test
 ```
 
 ## Build
