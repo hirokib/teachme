@@ -96,7 +96,10 @@ async function main() {
     createSpace,
     getSpaceDetail,
     getThreadDetail,
+    finishMessageVerification,
+    getMessageVerification,
     setThreadIntent,
+    startMessageVerification,
   } = await import('./exploration-store.js');
   const exploration = createSpace('Why do models hallucinate?');
   addExplorationMessage(exploration.thread.id, 'user', 'What does hallucination mean?');
@@ -121,12 +124,26 @@ async function main() {
   assert.strictEqual(branchDetail?.thread.intent, 'learn');
   assert.match(branchDetail?.thread.contextSummary ?? '', /hallucination mean/);
   assert.strictEqual(getSpaceDetail(exploration.space.id)?.threads.length, 2);
+  startMessageVerification(source.id);
+  finishMessageVerification(source.id, {
+    overallStatus: 'mostly_supported',
+    summary: 'The central definition is broadly consistent with the source.',
+    claims: [{
+      claim: 'Hallucinations are not grounded in reliable evidence.',
+      verdict: 'supported',
+      explanation: 'The source describes this lack of grounding.',
+      sources: [{ title: 'Primary source', url: 'https://example.com/source' }],
+    }],
+  });
+  assert.strictEqual(getMessageVerification(source.id)?.result?.claims[0]?.sources[0]?.url, 'https://example.com/source');
 
   const persisted = new SQL.Database(fs.readFileSync(TMP_DB));
   const planCount = persisted.exec('SELECT COUNT(*) FROM learning_plans');
   assert.deepStrictEqual(planCount[0]?.values, [[1]], 'learning plan must persist to disk');
   const explorationCount = persisted.exec('SELECT COUNT(*) FROM exploration_threads');
   assert.deepStrictEqual(explorationCount[0]?.values, [[2]], 'exploration branches must persist to disk');
+  const verificationCount = persisted.exec("SELECT COUNT(*) FROM message_verifications WHERE status = 'completed'");
+  assert.deepStrictEqual(verificationCount[0]?.values, [[1]], 'message verification must persist to disk');
   fs.rmSync(TMP_DB, { force: true });
   console.log('✓ database, learning progress, and exploration branches persist');
 }

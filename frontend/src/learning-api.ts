@@ -92,12 +92,14 @@ export async function getStudyNode(id: number): Promise<StudyDetail> {
 export async function streamTutorMessage(
   nodeId: number,
   message: string,
-  onDelta: (reply: string) => void
+  onDelta: (reply: string) => void,
+  signal?: AbortSignal
 ): Promise<string> {
   const response = await fetch(`${API_URL}/api/nodes/${nodeId}/tutor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
+    signal,
   });
   if (!response.ok || !response.body) await json(response);
   const reader = response.body!.getReader();

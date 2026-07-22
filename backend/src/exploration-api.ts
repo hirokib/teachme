@@ -4,12 +4,17 @@ import {
   addExplorationMessage,
   createBranch,
   createSpace,
+  failMessageVerification,
+  finishMessageVerification,
+  getExplorationMessage,
   getSpaceDetail,
   getThreadDetail,
   listSpaces,
   setThreadIntent,
+  startMessageVerification,
   type ThreadIntent,
 } from './exploration-store.js';
+import { verifyWithCodexSearch } from './verification.js';
 
 function id(value: string | string[]): number | null {
   if (Array.isArray(value)) return null;
@@ -103,17 +108,40 @@ export async function postExplorationMessage(req: Request, res: Response): Promi
   res.setHeader('Cache-Control', 'no-cache');
   const abort = new AbortController();
   res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+  let partialReply = '';
   try {
     const reply = await streamExplorationReply({
       thread: detail.thread,
       messages,
-      onDelta: (delta) => res.write(delta),
+      onDelta: (delta) => { partialReply += delta; res.write(delta); },
       signal: abort.signal,
     });
     if (reply) addExplorationMessage(detail.thread.id, 'assistant', reply);
     res.end();
   } catch (error) {
+    if (abort.signal.aborted && partialReply) addExplorationMessage(detail.thread.id, 'assistant', partialReply);
     if (!res.headersSent) res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     else res.destroy(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+export async function postMessageVerification(req: Request, res: Response): Promise<void> {
+  const messageId = id(req.params.id);
+  const message = messageId ? getExplorationMessage(messageId) : null;
+  if (!message || message.role !== 'assistant') {
+    res.status(404).json({ error: 'Assistant message not found' });
+    return;
+  }
+  startMessageVerification(message.id);
+  const abort = new AbortController();
+  res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+  try {
+    const visibleContent = message.content.replace(/<follow-ups>[\s\S]*?<\/follow-ups>/g, '').trim();
+    const result = await verifyWithCodexSearch(visibleContent, abort.signal);
+    res.json(finishMessageVerification(message.id, result));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    failMessageVerification(message.id, detail);
+    res.status(500).json({ error: detail });
   }
 }

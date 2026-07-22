@@ -125,6 +125,16 @@ export async function initDb() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (thread_id) REFERENCES exploration_threads(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS message_verifications (
+      message_id INTEGER PRIMARY KEY,
+      status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+      result_json TEXT,
+      error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (message_id) REFERENCES exploration_messages(id) ON DELETE CASCADE
+    );
   `);
 
   const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0];

@@ -3,8 +3,12 @@ export type ThreadIntent = 'explore' | 'verify' | 'learn';
 export type ExplorationSpace = { id: number; title: string; createdAt: string; updatedAt: string };
 export type ExplorationThread = { id: number; spaceId: number; parentThreadId: number | null; sourceMessageId: number | null; sourceExcerpt: string; title: string; intent: ThreadIntent; contextSummary: string; branchSummary: string; createdAt: string; updatedAt: string };
 export type ExplorationMessage = { id: number; threadId: number; role: 'user' | 'assistant'; content: string; createdAt: string };
+export type VerificationSource = { title: string; url: string; publisher?: string; publishedAt?: string; evidence?: string };
+export type VerificationClaim = { claim: string; verdict: 'supported' | 'partially_supported' | 'disputed' | 'unverified'; explanation: string; sources: VerificationSource[] };
+export type VerificationResult = { overallStatus: 'supported' | 'mostly_supported' | 'mixed' | 'mostly_unsupported' | 'unsupported' | 'unclear'; summary: string; claims: VerificationClaim[] };
+export type MessageVerification = { messageId: number; status: 'running' | 'completed' | 'failed'; result: VerificationResult | null; error: string; createdAt: string; updatedAt: string };
 export type SpaceDetail = { space: ExplorationSpace; threads: ExplorationThread[] };
-export type ThreadDetail = { space: ExplorationSpace; thread: ExplorationThread; parent: ExplorationThread | null; sourceMessage: ExplorationMessage | null; messages: ExplorationMessage[] };
+export type ThreadDetail = { space: ExplorationSpace; thread: ExplorationThread; parent: ExplorationThread | null; sourceMessage: ExplorationMessage | null; messages: ExplorationMessage[]; verifications: MessageVerification[] };
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -19,8 +23,9 @@ export async function getExploration(id: number) { return json<SpaceDetail>(awai
 export async function getExplorationThread(id: number) { return json<ThreadDetail>(await fetch(`${API_URL}/api/exploration-threads/${id}`)); }
 export async function createExplorationBranch(threadId: number, input: { sourceMessageId: number; excerpt: string; title: string; intent: ThreadIntent; contextScope: 'selection' | 'recent' | 'full' }) { return json<ExplorationThread>(await fetch(`${API_URL}/api/exploration-threads/${threadId}/branches`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })); }
 export async function updateThreadIntent(threadId: number, intent: ThreadIntent) { const response = await fetch(`${API_URL}/api/exploration-threads/${threadId}/intent`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intent }) }); if (!response.ok) await json(response); }
-export async function streamExplorationMessage(threadId: number, content: string, onDelta: (reply: string) => void) {
-  const response = await fetch(`${API_URL}/api/exploration-threads/${threadId}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+export async function verifyExplorationMessage(messageId: number, signal?: AbortSignal) { return json<MessageVerification>(await fetch(`${API_URL}/api/exploration-messages/${messageId}/verify`, { method: 'POST', signal })); }
+export async function streamExplorationMessage(threadId: number, content: string, onDelta: (reply: string) => void, signal?: AbortSignal) {
+  const response = await fetch(`${API_URL}/api/exploration-threads/${threadId}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }), signal });
   if (!response.ok || !response.body) await json(response);
   const reader = response.body!.getReader(); const decoder = new TextDecoder(); let reply = '';
   while (true) { const { done, value } = await reader.read(); if (done) break; reply += decoder.decode(value, { stream: true }); onDelta(reply); }

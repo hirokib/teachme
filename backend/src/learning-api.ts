@@ -98,6 +98,7 @@ export async function postTutorMessage(req: Request, res: Response): Promise<voi
   res.on('close', () => {
     if (!res.writableEnded) abort.abort();
   });
+  let partialReply = '';
 
   try {
     const reply = await streamTutorReply({
@@ -106,13 +107,14 @@ export async function postTutorMessage(req: Request, res: Response): Promise<voi
       allNodes: study.allNodes,
       note: study.note,
       messages: history,
-      onDelta: (delta) => res.write(delta),
+      onDelta: (delta) => { partialReply += delta; res.write(delta); },
       signal: abort.signal,
       sessionId: `node-${study.node.id}`,
     });
     if (reply) addStudyMessage(study.node.id, 'assistant', reply);
     res.end();
   } catch (error) {
+    if (abort.signal.aborted && partialReply) addStudyMessage(study.node.id, 'assistant', partialReply);
     if (!res.headersSent) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     } else {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Prose } from './Prose';
@@ -46,6 +46,8 @@ export function StudyPage() {
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
+  const activeResponse = useRef<AbortController | null>(null);
+  useEffect(() => () => activeResponse.current?.abort(), []);
 
   async function load() {
     const result = await getStudyNode(id);
@@ -66,17 +68,24 @@ export function StudyPage() {
     setMessage('');
     setBusy(true);
     setError('');
+    const controller = new AbortController();
+    activeResponse.current = controller;
+    let partialReply = '';
     try {
       await streamTutorMessage(id, trimmed, (reply) => {
+        partialReply = reply;
         setMessages([...history, { role: 'assistant', content: reply }]);
-      });
+      }, controller.signal);
     } catch (cause) {
-      setMessages(history);
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (controller.signal.aborted) setMessages(partialReply ? [...history, { role: 'assistant', content: partialReply }] : history);
+      else { setMessages(history); setError(cause instanceof Error ? cause.message : String(cause)); }
     } finally {
+      if (activeResponse.current === controller) activeResponse.current = null;
       setBusy(false);
     }
   }
+
+  function stopResponse() { activeResponse.current?.abort(); }
 
   async function newQuestion() {
     setChecking(true);
@@ -152,7 +161,7 @@ export function StudyPage() {
                 ? <Prose key={index} className="mr-8 rounded-2xl rounded-bl-sm border border-primary/10 bg-card p-3 text-sm leading-relaxed shadow-sm">{item.content}</Prose>
                 : <div key={index} className="mr-8 animate-pulse rounded-2xl rounded-bl-sm border border-primary/10 bg-card p-3 text-sm text-muted-foreground">Thinking…</div>)}
           </div>
-          <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex gap-2"><input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask for an example, go deeper, or explain your confusion…" className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" /><Button className="pop pop-ink rounded-xl" disabled={busy}>{busy ? 'Responding…' : 'Send'}</Button></form>
+          <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex gap-2"><input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask for an example, go deeper, or explain your confusion…" className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
           <div className="flex flex-wrap gap-2">{['Continue', 'Explain simply', 'Show an example'].map((label) => <Button key={label} size="sm" variant="outline" className="pop rounded-lg" disabled={busy} onClick={() => void sendTutor(label)}>{label}</Button>)}</div>
         </section>
 

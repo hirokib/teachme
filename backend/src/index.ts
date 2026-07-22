@@ -34,6 +34,7 @@ import {
   postExplorationBranch,
   postExplorationMessage,
   postExplorationSpace,
+  postMessageVerification,
 } from './exploration-api.js';
 
 const app = express();
@@ -96,6 +97,7 @@ app.get('/api/exploration-threads/:id', getExplorationThread);
 app.post('/api/exploration-threads/:id/messages', postExplorationMessage);
 app.post('/api/exploration-threads/:id/branches', postExplorationBranch);
 app.patch('/api/exploration-threads/:id/intent', patchExplorationIntent);
+app.post('/api/exploration-messages/:id/verify', postMessageVerification);
 
 async function start() {
   await initDb();

@@ -34,7 +34,7 @@ const Message = memo(function Message({
   );
 });
 
-function Composer({ busy, onSend }: { busy: boolean; onSend: (text: string) => void }) {
+function Composer({ busy, onSend, onStop }: { busy: boolean; onSend: (text: string) => void; onStop: () => void }) {
   const [input, setInput] = useState('');
 
   function submit(event: React.FormEvent) {
@@ -59,9 +59,7 @@ function Composer({ busy, onSend }: { busy: boolean; onSend: (text: string) => v
         placeholder="Ask Codex… (Shift+Enter for a new line)"
         className="max-h-48 flex-1 resize-none overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm field-sizing-content"
       />
-      <Button type="submit" disabled={busy}>
-        Send
-      </Button>
+      {busy ? <Button type="button" variant="outline" onClick={onStop}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit">Send</Button>}
     </form>
   );
 }
@@ -72,6 +70,8 @@ export function Chat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const sessionId = useRef(crypto.randomUUID());
+  const activeResponse = useRef<AbortController | null>(null);
+  useEffect(() => () => activeResponse.current?.abort(), []);
 
   async function refreshAuth() {
     const response = await fetch(`${API_URL}/api/auth/codex`);
@@ -122,6 +122,9 @@ export function Chat() {
     setMessages([...history, { role: 'assistant', text: '' }]);
     setBusy(true);
     setError('');
+    const controller = new AbortController();
+    activeResponse.current = controller;
+    let reply = '';
 
     try {
       const response = await fetch(`${API_URL}/api/codex/chat`, {
@@ -131,6 +134,7 @@ export function Chat() {
           'X-Session-Id': sessionId.current,
         },
         body: JSON.stringify({ messages: history }),
+        signal: controller.signal,
       });
       if (!response.ok || !response.body) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
@@ -139,7 +143,6 @@ export function Chat() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let reply = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -149,12 +152,15 @@ export function Chat() {
       reply += decoder.decode();
       setMessages([...history, { role: 'assistant', text: reply }]);
     } catch (cause) {
-      setMessages(history);
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (controller.signal.aborted) setMessages(reply ? [...history, { role: 'assistant', text: reply }] : history);
+      else { setMessages(history); setError(cause instanceof Error ? cause.message : String(cause)); }
     } finally {
+      if (activeResponse.current === controller) activeResponse.current = null;
       setBusy(false);
     }
   }
+
+  function stopResponse() { activeResponse.current?.abort(); }
 
   if (auth.status !== 'connected') {
     return (
@@ -208,7 +214,7 @@ export function Chat() {
         ))}
       </div>
 
-      <Composer busy={busy} onSend={(text) => void send(text)} />
+      <Composer busy={busy} onSend={(text) => void send(text)} onStop={stopResponse} />
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
