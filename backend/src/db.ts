@@ -92,6 +92,39 @@ export async function initDb() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS exploration_spaces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS exploration_threads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      space_id INTEGER NOT NULL,
+      parent_thread_id INTEGER,
+      source_message_id INTEGER,
+      source_excerpt TEXT,
+      title TEXT NOT NULL,
+      intent TEXT NOT NULL DEFAULT 'explore' CHECK (intent IN ('explore', 'verify', 'learn')),
+      context_summary TEXT NOT NULL DEFAULT '',
+      branch_summary TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (space_id) REFERENCES exploration_spaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_thread_id) REFERENCES exploration_threads(id) ON DELETE CASCADE,
+      FOREIGN KEY (source_message_id) REFERENCES exploration_messages(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS exploration_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      thread_id INTEGER NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (thread_id) REFERENCES exploration_threads(id) ON DELETE CASCADE
+    );
   `);
 
   const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0];

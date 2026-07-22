@@ -4,6 +4,9 @@ import { Chat } from './Chat';
 import { LearningHome } from './LearningHome';
 import { PlanPage } from './PlanPage';
 import { StudyPage } from './StudyPage';
+import { ExplorationHome } from './ExplorationHome';
+import { ExplorationSpacePage } from './ExplorationSpacePage';
+import { ExplorationWorkspace } from './ExplorationWorkspace';
 
 const rootRoute = createRootRoute({ component: App });
 
@@ -31,4 +34,8 @@ const nodeRoute = createRoute({
   component: StudyPage,
 });
 
-export const routeTree = rootRoute.addChildren([indexRoute, chatRoute, planRoute, nodeRoute]);
+const explorationHomeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/explore', component: ExplorationHome });
+const explorationSpaceRoute = createRoute({ getParentRoute: () => rootRoute, path: '/explore/$spaceId', component: ExplorationSpacePage });
+const explorationThreadRoute = createRoute({ getParentRoute: () => rootRoute, path: '/explore/$spaceId/thread/$threadId', component: ExplorationWorkspace });
+
+export const routeTree = rootRoute.addChildren([indexRoute, chatRoute, planRoute, nodeRoute, explorationHomeRoute, explorationSpaceRoute, explorationThreadRoute]);

@@ -26,6 +26,15 @@ import {
   postPlan,
   postTutorMessage,
 } from './learning-api.js';
+import {
+  getExplorationSpace,
+  getExplorationSpaces,
+  getExplorationThread,
+  patchExplorationIntent,
+  postExplorationBranch,
+  postExplorationMessage,
+  postExplorationSpace,
+} from './exploration-api.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,6 +88,14 @@ app.post('/api/nodes/:id/tutor', postTutorMessage);
 app.post('/api/nodes/:id/assessment-question', postAssessmentQuestion);
 app.post('/api/nodes/:id/assessments', postAssessment);
 app.patch('/api/nodes/:id/note', patchNodeNote);
+
+app.get('/api/explorations', getExplorationSpaces);
+app.post('/api/explorations', postExplorationSpace);
+app.get('/api/explorations/:id', getExplorationSpace);
+app.get('/api/exploration-threads/:id', getExplorationThread);
+app.post('/api/exploration-threads/:id/messages', postExplorationMessage);
+app.post('/api/exploration-threads/:id/branches', postExplorationBranch);
+app.patch('/api/exploration-threads/:id/intent', patchExplorationIntent);
 
 async function start() {
   await initDb();

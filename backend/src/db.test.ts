@@ -90,11 +90,45 @@ async function main() {
   assert.strictEqual(study?.node.status, 'completed');
   assert.strictEqual(study?.assessments.length, 1);
 
+  const {
+    addExplorationMessage,
+    createBranch,
+    createSpace,
+    getSpaceDetail,
+    getThreadDetail,
+    setThreadIntent,
+  } = await import('./exploration-store.js');
+  const exploration = createSpace('Why do models hallucinate?');
+  addExplorationMessage(exploration.thread.id, 'user', 'What does hallucination mean?');
+  const source = addExplorationMessage(
+    exploration.thread.id,
+    'assistant',
+    'A hallucination is a confident response not grounded in reliable evidence.'
+  );
+  const branch = createBranch({
+    parentThreadId: exploration.thread.id,
+    sourceMessageId: source.id,
+    excerpt: 'reliable evidence',
+    title: 'Verify: reliable evidence',
+    intent: 'verify',
+    contextScope: 'recent',
+  });
+  setThreadIntent(branch.id, 'learn');
+  const branchDetail = getThreadDetail(branch.id);
+  assert.strictEqual(branchDetail?.thread.parentThreadId, exploration.thread.id);
+  assert.strictEqual(branchDetail?.thread.sourceMessageId, source.id);
+  assert.strictEqual(branchDetail?.thread.sourceExcerpt, 'reliable evidence');
+  assert.strictEqual(branchDetail?.thread.intent, 'learn');
+  assert.match(branchDetail?.thread.contextSummary ?? '', /hallucination mean/);
+  assert.strictEqual(getSpaceDetail(exploration.space.id)?.threads.length, 2);
+
   const persisted = new SQL.Database(fs.readFileSync(TMP_DB));
   const planCount = persisted.exec('SELECT COUNT(*) FROM learning_plans');
   assert.deepStrictEqual(planCount[0]?.values, [[1]], 'learning plan must persist to disk');
+  const explorationCount = persisted.exec('SELECT COUNT(*) FROM exploration_threads');
+  assert.deepStrictEqual(explorationCount[0]?.values, [[2]], 'exploration branches must persist to disk');
   fs.rmSync(TMP_DB, { force: true });
-  console.log('✓ db persistence and learning progress survive hard kill');
+  console.log('✓ database, learning progress, and exploration branches persist');
 }
 
 main().catch((err) => {

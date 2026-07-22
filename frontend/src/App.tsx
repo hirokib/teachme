@@ -11,6 +11,7 @@ export function App() {
             TeachMe
           </Link>
           <div className="flex gap-5 text-sm text-muted-foreground">
+            <Link to="/explore" className="transition-colors hover:text-primary [&.active]:text-primary">Explore</Link>
             <Link to="/" className="transition-colors hover:text-primary [&.active]:text-primary">Learning plans</Link>
             <Link to="/chat" className="transition-colors hover:text-primary [&.active]:text-primary">Codex chat</Link>
           </div>

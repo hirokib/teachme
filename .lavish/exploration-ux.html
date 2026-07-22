@@ -39,8 +39,7 @@
       <section class="pane">
         <div class="bubble user">How could genetic algorithms help here?</div>
         <div class="bubble">A genetic algorithm searches across candidate designs using a fitness score. This may help when <span class="selection">the design choices are discrete and gradients are unavailable</span>.<span class="small" style="display:block;margin-top:8px">↑ The user highlighted this passage, which anchors the new branch.</span></div>
-        <div class="actionbar"><span class="action">Branch</span><span class="action">Define</span><span class="action">Verify</span><span class="action">Save insight</span></div>
-        <p class="small"><strong>Save insight</strong> turns a useful conclusion into a durable, editable knowledge card with backlinks to this message and thread. It can later be linked elsewhere or promoted into a lesson.</p>
+        <div class="actionbar"><span class="action">Branch</span><span class="action">Define</span><span class="action">Verify</span></div>
         <div class="bubble user">What exactly counts as a discrete design choice?</div>
         <div class="bubble">Examples include choosing an update rule, connectivity pattern, or module type. This side thread inherits the highlighted claim and enough parent context to explain why you asked.</div>
       </section>
@@ -62,8 +61,8 @@ flowchart TD
   C -- No --> B
   C -- Yes --> D["Branch from message or selection"]
   D --> E["Explore, define, or verify"]
-  E --> F["Capture conclusion as an insight"]
-  F --> G["Send insight back to parent"]
+  E --> F["Summarize what the branch established"]
+  F --> G["Link branch back to parent"]
   G --> B
   F --> H{"Cluster is mature?"}
   H -- Not yet --> I["Keep as knowledge graph"]
@@ -73,7 +72,7 @@ flowchart TD
 
   <section class="section grid">
     <article class="card"><h3>Branch context should be explicit</h3><p>Let the user choose selection only, recent exchange, or full parent summary. Show the inherited material in the side panel so hidden context never feels magical.</p></article>
-    <article class="card"><h3>Graph nodes should be meaningful</h3><p>Graph threads, concepts, claims, sources, and insights—not every message. Otherwise the graph becomes an impressive but unusable hairball.</p></article>
+      <article class="card"><h3>Graph nodes should be meaningful</h3><p>Graph threads, concepts, claims, and sources—not every message. Otherwise the graph becomes an impressive but unusable hairball.</p></article>
     <article class="card"><h3>Branches need a return path</h3><p>A side conversation is incomplete until its conclusion can be summarized, linked, and brought back into the parent without copying an entire transcript.</p></article>
   </section>
 
@@ -82,14 +81,14 @@ flowchart TD
     <div class="card steps">
       <div class="step"><div><h3>Thread branching</h3><p>Branch from a whole message or selected text. Store parent thread, source message, selected excerpt, and inherited context snapshot.</p></div></div>
       <div class="step"><div><h3>Tree navigation before graph navigation</h3><p>Add a dependable thread sidebar, breadcrumbs, origin preview, and “return to parent.” The tree is the operational interface.</p></div></div>
-      <div class="step"><div><h3>Insight promotion</h3><p>End a branch with “capture conclusion” and “send to parent.” Insights are durable objects with backlinks to evidence.</p></div></div>
-      <div class="step"><div><h3>Claim verification</h3><p>Mark claims unverified, supported, disputed, or superseded. Attach sources and preserve which conversation asserted what.</p></div></div>
+      <div class="step"><div><h3>Branch summaries and backlinks</h3><p>Let a branch produce a concise summary and remain visibly linked to its parent. Do not introduce a separate saved-insight object yet.</p></div></div>
+      <div class="step"><div><h3>Claim verification with citations</h3><p>Mark claims unverified, supported, disputed, or superseded. Whenever possible, show inline citations with direct links to the supporting or contradicting sources, and preserve which conversation asserted what.</p></div></div>
       <div class="step"><div><h3>Graph and lesson promotion</h3><p>Visualize meaningful objects and let the user select a cluster to turn into a learning plan. Keep this downstream of useful branching.</p></div></div>
     </div>
   </section>
 
   <section class="section">
-    <div class="callout"><span class="tag" style="color:#cfc5ff">Decision recorded</span><h2>Conversation-first with progressive structure</h2><p>TeachMe starts as a familiar conversation. Structure appears only when the user branches a question, saves an insight, verifies a claim, or promotes a mature cluster into a learning plan. The graph is a powerful secondary view, not the place users must begin.</p></div>
+    <div class="callout"><span class="tag" style="color:#cfc5ff">Decision recorded</span><h2>Conversation-first with progressive structure</h2><p>TeachMe starts as a familiar conversation. Structure appears only when the user branches a question, verifies a claim, or promotes a mature cluster into a learning plan. The graph is a powerful secondary view, not the place users must begin.</p></div>
   </section>
 </main>
 <script>mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#eee9ff',primaryTextColor:'#24202d',primaryBorderColor:'#6655c7',lineColor:'#80758d',secondaryColor:'#eef8f2',tertiaryColor:'#fff7e7',fontFamily:'Inter,system-ui,sans-serif'}});</script>
