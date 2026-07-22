@@ -2,6 +2,9 @@
   "name": "teachme",
   "version": "1.0.0",
   "description": "Interactive learning platform",
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "scripts": {
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "build": "cd backend && npm run build && cd ../frontend && npm run build",

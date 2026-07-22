@@ -1,9 +1,21 @@
 # TeachMe
 
+TeachMe supports two server-side OpenAI authentication modes:
+
+- **ChatGPT sign-in for Codex** — open `/chat`, choose **Sign in with ChatGPT**,
+  and complete the device-code flow with a ChatGPT Plus or Pro account.
+- **OpenAI API key** — set `OPENAI_API_KEY` in `backend/.env` for the original
+  AI SDK endpoint.
+
+ChatGPT OAuth credentials are stored locally in `backend/auth.json`, excluded
+from git, and refreshed by the backend. They are never sent to the frontend.
 
 sql.js is a WASM build of SQLite — no native module, so no C++ toolchain needed.
 
 ## Setup
+
+Node.js 22.19 or newer is required. The repository's `.node-version` selects
+Node 24 when using a compatible version manager.
 
 ```bash
 # Install backend dependencies

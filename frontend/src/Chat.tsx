@@ -1,54 +1,173 @@
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+type AuthState = {
+  status: 'disconnected' | 'waiting' | 'connected' | 'error';
+  verificationUri?: string;
+  userCode?: string;
+  error?: string;
+};
+
+type ChatMessage = { role: 'user' | 'assistant'; text: string };
+
 export function Chat() {
+  const [auth, setAuth] = useState<AuthState>({ status: 'disconnected' });
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status, error } = useChat({
-    transport: new DefaultChatTransport({ api: `${API_URL}/api/chat` }),
-  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const sessionId = useRef(crypto.randomUUID());
 
-  const busy = status === 'submitted' || status === 'streaming';
+  async function refreshAuth() {
+    const response = await fetch(`${API_URL}/api/auth/codex`);
+    if (!response.ok) throw new Error('Could not check ChatGPT sign-in');
+    setAuth((await response.json()) as AuthState);
+  }
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || busy) return;
-    sendMessage({ text: input });
+  useEffect(() => {
+    refreshAuth().catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (auth.status !== 'waiting') return;
+    const timer = window.setInterval(() => void refreshAuth(), 1500);
+    return () => window.clearInterval(timer);
+  }, [auth.status]);
+
+  async function signIn() {
+    setError('');
+    const loginWindow = window.open('about:blank', '_blank');
+    try {
+      const response = await fetch(`${API_URL}/api/auth/codex/start`, { method: 'POST' });
+      if (!response.ok) throw new Error('Could not start ChatGPT sign-in');
+      const next = (await response.json()) as AuthState;
+      setAuth(next);
+      if (next.verificationUri) {
+        if (loginWindow) loginWindow.location.href = next.verificationUri;
+        else window.open(next.verificationUri, '_blank', 'noopener,noreferrer');
+      } else {
+        loginWindow?.close();
+      }
+    } catch (cause) {
+      loginWindow?.close();
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  async function signOut() {
+    await fetch(`${API_URL}/api/auth/codex`, { method: 'DELETE' });
+    setAuth({ status: 'disconnected' });
+    setMessages([]);
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+
+    const history: ChatMessage[] = [...messages, { role: 'user', text }];
+    setMessages([...history, { role: 'assistant', text: '' }]);
     setInput('');
-  };
+    setBusy(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_URL}/api/codex/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-Id': sessionId.current,
+        },
+        body: JSON.stringify({ messages: history }),
+      });
+      if (!response.ok || !response.body) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || `Chat failed (${response.status})`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let reply = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        reply += decoder.decode(value, { stream: true });
+        setMessages([...history, { role: 'assistant', text: reply }]);
+      }
+      reply += decoder.decode();
+      setMessages([...history, { role: 'assistant', text: reply }]);
+    } catch (cause) {
+      setMessages(history);
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (auth.status !== 'connected') {
+    return (
+      <div className="flex max-w-lg flex-col items-start gap-4">
+        <h1 className="text-3xl font-bold">Chat with Codex</h1>
+        <p className="text-sm text-muted-foreground">
+          Connect a ChatGPT Plus or Pro account to use Codex without an API key.
+        </p>
+        {auth.status === 'waiting' && auth.userCode ? (
+          <div className="w-full rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Enter this code in the sign-in page:</p>
+            <div className="mt-2 flex items-center gap-3">
+              <code className="rounded bg-muted px-3 py-2 text-lg font-semibold tracking-wider">
+                {auth.userCode}
+              </code>
+              <Button variant="outline" onClick={() => navigator.clipboard.writeText(auth.userCode!)}>
+                Copy
+              </Button>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">Waiting for sign-in…</p>
+          </div>
+        ) : (
+          <Button onClick={signIn}>Sign in with ChatGPT</Button>
+        )}
+        {(error || auth.error) && <p className="text-sm text-destructive">{error || auth.error}</p>}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl">
-      <h1 className="text-3xl font-bold">Chat</h1>
+    <div className="flex max-w-2xl flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Chat with Codex</h1>
+          <p className="text-sm text-muted-foreground">Connected through ChatGPT</p>
+        </div>
+        <Button variant="outline" onClick={signOut}>Sign out</Button>
+      </div>
 
-      <div className="flex flex-col gap-3">
-        {messages.map((m) => (
-          <div key={m.id} className="text-sm">
-            <span className="font-semibold">{m.role === 'user' ? 'You' : 'AI'}: </span>
-            {/* v7 messages are part arrays, not a content string */}
-            {m.parts.map((part, i) =>
-              part.type === 'text' ? <span key={i}>{part.text}</span> : null
-            )}
+      <div className="flex min-h-48 flex-col gap-3 rounded-lg border bg-card p-4">
+        {messages.length === 0 && (
+          <p className="text-sm text-muted-foreground">Ask Codex anything.</p>
+        )}
+        {messages.map((message, index) => (
+          <div key={index} className="text-sm whitespace-pre-wrap">
+            <span className="font-semibold">{message.role === 'user' ? 'You' : 'Codex'}: </span>
+            {message.text || (busy && index === messages.length - 1 ? 'Thinking…' : '')}
           </div>
         ))}
-        {busy && <p className="text-sm text-muted-foreground">Thinking…</p>}
-        {error && <p className="text-sm text-destructive">{error.message}</p>}
       </div>
 
       <form onSubmit={submit} className="flex gap-2">
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Say something…"
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Ask Codex…"
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
-        <Button type="submit" disabled={busy}>
-          Send
-        </Button>
+        <Button type="submit" disabled={busy}>Send</Button>
       </form>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

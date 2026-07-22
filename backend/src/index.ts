@@ -10,11 +10,17 @@ import {
   type UIMessage,
 } from 'ai';
 import { initDb, getDb } from './db.js';
+import {
+  codexChat,
+  getCodexAuthStatus,
+  logoutCodex,
+  startCodexLogin,
+} from './codex.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
@@ -49,6 +55,11 @@ app.post('/api/chat', async (req, res) => {
     stream: toUIMessageStream({ stream: result.stream }),
   });
 });
+
+app.get('/api/auth/codex', getCodexAuthStatus);
+app.post('/api/auth/codex/start', startCodexLogin);
+app.delete('/api/auth/codex', logoutCodex);
+app.post('/api/codex/chat', codexChat);
 
 async function start() {
   await initDb();

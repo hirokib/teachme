@@ -2,6 +2,9 @@
   "name": "teachme-backend",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
@@ -13,6 +16,7 @@
   "type": "module",
   "dependencies": {
     "@ai-sdk/openai": "^4.0.17",
+    "@earendil-works/pi-ai": "^0.81.1",
     "ai": "^7.0.34",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
