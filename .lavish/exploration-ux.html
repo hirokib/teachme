@@ -38,15 +38,16 @@
       </aside>
       <section class="pane">
         <div class="bubble user">How could genetic algorithms help here?</div>
-        <div class="bubble">A genetic algorithm searches across candidate designs using a fitness score. This may help when <span class="selection">the design choices are discrete and gradients are unavailable</span>.</div>
+        <div class="bubble">A genetic algorithm searches across candidate designs using a fitness score. This may help when <span class="selection">the design choices are discrete and gradients are unavailable</span>.<span class="small" style="display:block;margin-top:8px">↑ The user highlighted this passage, which anchors the new branch.</span></div>
         <div class="actionbar"><span class="action">Branch</span><span class="action">Define</span><span class="action">Verify</span><span class="action">Save insight</span></div>
+        <p class="small"><strong>Save insight</strong> turns a useful conclusion into a durable, editable knowledge card with backlinks to this message and thread. It can later be linked elsewhere or promoted into a lesson.</p>
         <div class="bubble user">What exactly counts as a discrete design choice?</div>
         <div class="bubble">Examples include choosing an update rule, connectivity pattern, or module type. This side thread inherits the highlighted claim and enough parent context to explain why you asked.</div>
       </section>
       <aside class="pane">
         <div class="context"><strong>Origin</strong><span>Branched from “How could genetic algorithms help here?”</span></div>
         <div class="context"><strong>Inherited context</strong><span>Selected claim + parent summary + 2 pinned notes</span></div>
-        <div class="context"><strong>Thread intent</strong><span>Explore · can change to Verify</span></div>
+        <div class="context"><strong>Thread intent</strong><span>Explore · can change to Verify. Intent sets the model’s behavior and available actions: Explore favors possibilities and questions; Verify asks for explicit claims, evidence, and uncertainty; Learn introduces teaching and retrieval checks.</span></div>
         <div class="context"><strong>Return path</strong><span>Send a conclusion back to the parent</span></div>
       </aside>
     </div>
@@ -88,16 +89,7 @@ flowchart TD
   </section>
 
   <section class="section">
-    <div class="callout"><h2>The key product decision</h2><p>Should TeachMe feel primarily like a conversation app that grows structure, or a knowledge graph where conversations happen inside nodes? I recommend the former: conversation is familiar, while structure appears progressively as the user branches, saves, and verifies.</p></div>
-    <form class="card" style="margin-top:18px" data-lavish-question="primary-metaphor" onsubmit="event.preventDefault();const v=new FormData(event.currentTarget).get('metaphor');if(v)window.lavish.queuePrompt('Use this primary UX metaphor for TeachMe: '+v,{tag:'decision',text:'Primary metaphor: '+v,queueKey:'primary-metaphor',element:event.currentTarget,data:{answer:v}})">
-      <h3>Choose the primary metaphor</h3>
-      <div class="options">
-        <label class="option"><input type="radio" name="metaphor" value="Conversation-first with progressive structure" checked><span><strong>Conversation-first</strong><br><span class="small">Recommended. Start chatting; branches, insights, and plans emerge as needed.</span></span></label>
-        <label class="option"><input type="radio" name="metaphor" value="Graph-first knowledge workspace"><span><strong>Graph-first</strong><br><span class="small">Start from nodes and connections; open a conversation within any node.</span></span></label>
-        <label class="option"><input type="radio" name="metaphor" value="Equal split between chat and graph"><span><strong>Dual canvas</strong><br><span class="small">Chat and graph remain equally prominent, with greater UI complexity.</span></span></label>
-      </div>
-      <button class="queue" type="submit">Queue this decision</button>
-    </form>
+    <div class="callout"><span class="tag" style="color:#cfc5ff">Decision recorded</span><h2>Conversation-first with progressive structure</h2><p>TeachMe starts as a familiar conversation. Structure appears only when the user branches a question, saves an insight, verifies a claim, or promotes a mature cluster into a learning plan. The graph is a powerful secondary view, not the place users must begin.</p></div>
   </section>
 </main>
 <script>mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#eee9ff',primaryTextColor:'#24202d',primaryBorderColor:'#6655c7',lineColor:'#80758d',secondaryColor:'#eef8f2',tertiaryColor:'#fff7e7',fontFamily:'Inter,system-ui,sans-serif'}});</script>
