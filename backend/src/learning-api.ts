@@ -138,6 +138,7 @@ export async function postTutorMessage(req: Request, res: Response): Promise<voi
     return;
   }
 
+  const isInitialRetrieval = study.messages.length === 0;
   addStudyMessage(study.node.id, 'user', message);
   const history = [...study.messages, { role: 'user' as const, content: message }].map((item) => ({
     role: item.role,
@@ -159,6 +160,7 @@ export async function postTutorMessage(req: Request, res: Response): Promise<voi
       node: study.node,
       allNodes: study.allNodes,
       note: study.note,
+      isInitialRetrieval,
       messages: history,
       onDelta: (delta) => { partialReply += delta; res.write(delta); },
       signal: abort.signal,

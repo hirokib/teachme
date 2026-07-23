@@ -61,7 +61,13 @@ export async function generateCurriculum(input: {
   return result;
 }
 
-function tutorSystem(plan: LearningPlan, node: LearningNode, related: LearningNode[], note: string): string {
+function tutorSystem(
+  plan: LearningPlan,
+  node: LearningNode,
+  related: LearningNode[],
+  note: string,
+  isInitialRetrieval: boolean
+): string {
   const prerequisiteProgress = related
     .filter((candidate) => node.prerequisites.includes(candidate.title))
     .map((candidate) => `${candidate.title}: ${candidate.masteryScore}% mastery`)
@@ -81,6 +87,8 @@ Recorded misconceptions: ${node.misconceptions.join('; ') || 'None yet'}
 Learner notes: ${note || 'None'}
 Source-grounded plan research: ${plan.researchContext || 'No external sources were recorded for this plan.'}
 
+${isInitialRetrieval ? `The learner's message is their required closed-note recall attempt before seeing any lesson material. Treat it as diagnostic evidence: briefly acknowledge accurate prior knowledge, identify one important gap or uncertainty without scoring the learner, then begin teaching the single most useful next idea. Do not imply that the learner should already have known the answer.` : ''}
+
 Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
@@ -89,6 +97,7 @@ export async function streamTutorReply(input: {
   node: LearningNode;
   allNodes: LearningNode[];
   note: string;
+  isInitialRetrieval?: boolean;
   messages: { role: 'user' | 'assistant'; content: string }[];
   onDelta: (delta: string) => void;
   signal?: AbortSignal;
@@ -96,7 +105,13 @@ export async function streamTutorReply(input: {
 }): Promise<string> {
   return streamCodex(
     {
-      systemPrompt: tutorSystem(input.plan, input.node, input.allNodes, input.note),
+      systemPrompt: tutorSystem(
+        input.plan,
+        input.node,
+        input.allNodes,
+        input.note,
+        input.isInitialRetrieval ?? false
+      ),
       messages: input.messages.map((message) =>
         message.role === 'user'
           ? { role: 'user' as const, content: message.content, timestamp: Date.now() }
