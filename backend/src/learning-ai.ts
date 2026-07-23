@@ -141,7 +141,7 @@ export async function streamTutorReply(input: {
 
 export async function generateAssessmentQuestion(node: LearningNode): Promise<{ question: string }> {
   return completeCodexJson<{ question: string }>(
-    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer.`,
+    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. Format every mathematical expression as LaTeX using $...$ for inline math or $$...$$ for display math. Never use plain-text approximations such as ^T for transpose.`,
     `Concept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nPrior gaps: ${node.misconceptions.join('; ') || 'None'}`
   );
 }
@@ -155,16 +155,26 @@ export type AssessmentResult = {
   masteryScore: number;
 };
 
+export type AttemptAssessmentResult = AssessmentResult & {
+  hint: string;
+};
+
 export async function assessResponse(
   node: LearningNode,
   question: string,
-  response: string
-): Promise<AssessmentResult> {
-  const assessment = await completeCodexJson<AssessmentResult>(
+  response: string,
+  priorAttempt?: { response: string; hint: string }
+): Promise<AttemptAssessmentResult> {
+  const assessment = await completeCodexJson<AttemptAssessmentResult>(
     `You assess learning evidence conservatively. Return only JSON with:
-{"result":"not_yet|partial|mastered","strengths":["..."],"gaps":["..."],"nextAction":"continue|simpler_explanation|analogy|worked_example|revisit_prerequisite|another_question|complete","feedback":"...","masteryScore":0}
-Use a 0-100 mastery score. A fluent but vague answer is not mastery. Feedback must be concise, specific, encouraging, and must correct the most important gap.`,
-    `Concept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nQuestion: ${question}\nLearner response: ${response}`
+{"result":"not_yet|partial|mastered","strengths":["..."],"gaps":["..."],"nextAction":"continue|simpler_explanation|analogy|worked_example|revisit_prerequisite|another_question|complete","feedback":"...","masteryScore":0,"hint":"..."}
+Use a 0-100 mastery score. A fluent but vague answer is not mastery. Feedback must be concise, specific, encouraging, and must correct the most important gap.
+The hint must be one short question or cue that points toward the most important missing idea without revealing the answer. Never put the answer or a full explanation in the hint.`,
+    `Concept: ${node.title}
+Objective: ${node.learningObjective}
+Completion criterion: ${node.completionCriteria}
+Question: ${question}
+${priorAttempt ? `First attempt: ${priorAttempt.response}\nHint provided: ${priorAttempt.hint}\nRetry response` : 'Learner response'}: ${response}`
   );
   const results = new Set(['not_yet', 'partial', 'mastered']);
   const actions = new Set([
@@ -184,6 +194,10 @@ Use a 0-100 mastery score. A fluent but vague answer is not mastery. Feedback mu
     strengths: Array.isArray(assessment.strengths) ? assessment.strengths.filter((item) => typeof item === 'string') : [],
     gaps: Array.isArray(assessment.gaps) ? assessment.gaps.filter((item) => typeof item === 'string') : [],
     feedback: typeof assessment.feedback === 'string' ? assessment.feedback : '',
+    hint:
+      typeof assessment.hint === 'string' && assessment.hint.trim()
+        ? assessment.hint.trim()
+        : 'Which important part of the question has not yet been explained or applied?',
     masteryScore: Math.max(0, Math.min(100, Number(assessment.masteryScore) || 0)),
   };
 }

@@ -52,6 +52,15 @@ export type Assessment = {
   masteryScore?: number;
 };
 
+export type AssessmentAttempt =
+  | {
+      needsRetry: true;
+      hint: string;
+      result: 'not_yet' | 'partial';
+      progress: LearningNode;
+    }
+  | ({ needsRetry: false; progress: LearningNode } & Assessment);
+
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -138,8 +147,14 @@ export async function generateQuestion(nodeId: number): Promise<string> {
 
 export async function assessAnswer(
   nodeId: number,
-  input: { question: string; response: string }
-): Promise<Assessment & { progress: LearningNode }> {
+  input: {
+    question: string;
+    response: string;
+    phase: 'initial' | 'retry';
+    initialResponse?: string;
+    hint?: string;
+  }
+): Promise<AssessmentAttempt> {
   return json(
     await fetch(`${API_URL}/api/nodes/${nodeId}/assessments`, {
       method: 'POST',

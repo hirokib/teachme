@@ -193,6 +193,10 @@ export async function postAssessment(req: Request, res: Response): Promise<void>
   const node = id ? getNode(id) : null;
   const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
   const response = typeof req.body?.response === 'string' ? req.body.response.trim() : '';
+  const phase = req.body?.phase === 'retry' ? 'retry' : 'initial';
+  const initialResponse =
+    typeof req.body?.initialResponse === 'string' ? req.body.initialResponse.trim() : '';
+  const hint = typeof req.body?.hint === 'string' ? req.body.hint.trim() : '';
   if (!node) {
     res.status(404).json({ error: 'Learning node not found' });
     return;
@@ -201,13 +205,31 @@ export async function postAssessment(req: Request, res: Response): Promise<void>
     res.status(400).json({ error: 'Question and response are required' });
     return;
   }
-  const assessment = await assessResponse(node, question, response);
+  if (phase === 'retry' && (!initialResponse || !hint)) {
+    res.status(400).json({ error: 'The first attempt and hint are required for a retry' });
+    return;
+  }
+  const assessment = await assessResponse(
+    node,
+    question,
+    response,
+    phase === 'retry' ? { response: initialResponse, hint } : undefined
+  );
+  if (phase === 'initial' && assessment.result !== 'mastered') {
+    res.json({
+      needsRetry: true,
+      hint: assessment.hint,
+      result: assessment.result,
+      progress: node,
+    });
+    return;
+  }
   saveAssessment(node.id, {
     result: assessment.result,
     gaps: assessment.gaps,
     masteryScore: assessment.masteryScore,
   });
-  res.json({ ...assessment, progress: getNode(node.id) });
+  res.json({ needsRetry: false, ...assessment, progress: getNode(node.id) });
 }
 
 export function patchNodeNote(req: Request, res: Response): void {

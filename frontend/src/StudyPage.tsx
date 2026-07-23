@@ -30,6 +30,12 @@ const RESULT_STYLES: Record<string, string> = {
   not_yet: 'bg-destructive/10 text-destructive',
 };
 
+const RESULT_LABELS: Record<string, string> = {
+  mastered: 'Correct',
+  partial: 'Partially correct',
+  not_yet: 'Not yet correct',
+};
+
 export function StudyPage() {
   const { nodeId } = useParams({ strict: false });
   const id = Number(nodeId);
@@ -40,6 +46,9 @@ export function StudyPage() {
   const [note, setNote] = useState('');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [initialAnswer, setInitialAnswer] = useState('');
+  const [assessmentHint, setAssessmentHint] = useState('');
+  const [initialResult, setInitialResult] = useState<'not_yet' | 'partial' | null>(null);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -89,6 +98,9 @@ export function StudyPage() {
     setChecking(true);
     setAssessment(null);
     setAnswer('');
+    setInitialAnswer('');
+    setAssessmentHint('');
+    setInitialResult(null);
     setError('');
     try {
       setQuestion(await generateQuestion(id));
@@ -105,7 +117,19 @@ export function StudyPage() {
     setChecking(true);
     setError('');
     try {
-      const result = await assessAnswer(id, { question, response: answer });
+      const result = await assessAnswer(id, {
+        question,
+        response: answer,
+        phase: assessmentHint ? 'retry' : 'initial',
+        initialResponse: assessmentHint ? initialAnswer : undefined,
+        hint: assessmentHint || undefined,
+      });
+      if (result.needsRetry) {
+        setInitialAnswer(answer.trim());
+        setAssessmentHint(result.hint);
+        setInitialResult(result.result);
+        return;
+      }
       setAssessment(result);
       setStudy((current) => current ? { ...current, node: result.progress } : current);
     } catch (cause) {
@@ -211,8 +235,23 @@ export function StudyPage() {
               <section className="pop rounded-2xl bg-accent/40 p-5"><h2 className="font-semibold">Learning target</h2><p className="mt-2 text-sm text-muted-foreground">{study.node.learningObjective}</p><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Evidence of completion</h3><p className="mt-2 text-sm">{study.node.completionCriteria}</p></section>
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
-                {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4"><p className="text-sm font-medium">{question}</p><textarea required value={answer} onChange={(event) => setAnswer(event.target.value)} className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Explain in your own words…" /><Button type="submit" className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : 'Check my understanding'}</Button>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}</form>}
-                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{assessment.result.replace('_', ' ')}</span><p className="text-sm">{assessment.feedback}</p>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}>{item}</li>)}</ul></div>}<Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button></div>}
+                {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
+                  <Prose className="text-sm font-medium">{question}</Prose>
+                  {assessmentHint && (
+                    <div className="rounded-xl bg-warning/10 p-3">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[initialResult ?? 'not_yet']}`}>
+                        {RESULT_LABELS[initialResult ?? 'not_yet']}
+                      </span>
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-warning">Minimal hint</p>
+                      <p className="mt-1 text-sm">{assessmentHint}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">Revise your answer below before seeing the explanation.</p>
+                    </div>
+                  )}
+                  <textarea required value={answer} onChange={(event) => setAnswer(event.target.value)} className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder={assessmentHint ? 'Try again using the hint…' : 'Explain in your own words…'} />
+                  <Button type="submit" className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : assessmentHint ? 'Submit retry' : 'Check my understanding'}</Button>
+                  {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+                </form>}
+                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{RESULT_LABELS[assessment.result] || assessment.result}</span><p className="text-sm">{assessment.feedback}</p>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}>{item}</li>)}</ul></div>}<Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button></div>}
               </section>
 
               <section className="pop rounded-2xl bg-card p-5"><h2 className="font-semibold">Your notes</h2><textarea value={note} onChange={(event) => setNote(event.target.value)} onBlur={() => void updateNote(id, note)} placeholder="Capture an explanation in your own words…" className="mt-3 min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" /><p className="mt-1 text-xs text-muted-foreground">Saved when you leave the field. The tutor can use these notes.</p></section>
