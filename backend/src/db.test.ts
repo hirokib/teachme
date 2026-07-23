@@ -67,6 +67,11 @@ async function main() {
     !planColumns.some((column) => column[1] === 'status'),
     'unused legacy plan status column must be removed'
   );
+  const migratedPlanColumns = db.exec('PRAGMA table_info(learning_plans)')[0]?.values ?? [];
+  assert.ok(
+    migratedPlanColumns.some((column) => column[1] === 'diagnostic_context'),
+    'diagnostic context column must be added to existing databases'
+  );
   const progressColumns = db.exec('PRAGMA table_info(learner_progress)')[0]?.values ?? [];
   assert.ok(
     !progressColumns.some((column) =>
@@ -91,6 +96,9 @@ async function main() {
     goal: 'Learn testing',
     currentExperience: 'Beginner',
     targetOutcome: 'Write a useful test',
+    diagnosticContext: JSON.stringify([
+      { question: 'What is an assertion?', answer: 'A check against an expected result.' },
+    ]),
     nodes: [
       {
         title: 'Assertions',
@@ -110,6 +118,7 @@ async function main() {
   });
   const study = getNodeStudy(nodeId);
   assert.strictEqual(study?.note, 'Assertions encode expectations.');
+  assert.match(study?.plan.diagnosticContext ?? '', /expected result/);
   assert.strictEqual(study?.node.masteryScore, 90);
   assert.strictEqual(study?.node.status, 'completed');
 

@@ -1,5 +1,12 @@
 import type { Request, Response } from 'express';
-import { assessResponse, generateAssessmentQuestion, generateCurriculum, streamTutorReply } from './learning-ai.js';
+import {
+  assessResponse,
+  generateAssessmentQuestion,
+  generateCurriculum,
+  generatePrerequisiteDiagnostic,
+  streamTutorReply,
+  type DiagnosticAnswer,
+} from './learning-ai.js';
 import {
   addStudyMessage,
   createPlan,
@@ -23,14 +30,62 @@ export function getPlans(_req: Request, res: Response): void {
   res.json(listPlans());
 }
 
+function planProfile(body: unknown): {
+  goal: string;
+  currentExperience: string;
+  targetOutcome: string;
+} | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const value = body as Record<string, unknown>;
+  const goal = typeof value.goal === 'string' ? value.goal.trim() : '';
+  const currentExperience =
+    typeof value.currentExperience === 'string' && value.currentExperience.trim()
+      ? value.currentExperience.trim()
+      : 'No background provided';
+  const targetOutcome =
+    typeof value.targetOutcome === 'string' && value.targetOutcome.trim()
+      ? value.targetOutcome.trim()
+      : `Understand and apply ${goal}`;
+  return goal
+    ? { goal, currentExperience, targetOutcome }
+    : null;
+}
+
+export async function postPlanDiagnostic(req: Request, res: Response): Promise<void> {
+  const profile = planProfile(req.body);
+  if (!profile) {
+    res.status(400).json({ error: 'Learning goal is required' });
+    return;
+  }
+  if (!(await isCodexConnected())) {
+    res.status(401).json({ error: 'Sign in with ChatGPT before starting the diagnostic' });
+    return;
+  }
+  res.json(await generatePrerequisiteDiagnostic(profile));
+}
+
 export async function postPlan(req: Request, res: Response): Promise<void> {
-  const body = req.body as Partial<{
-    goal: string;
-    currentExperience: string;
-    targetOutcome: string;
-  }>;
-  if (!body.goal?.trim() || !body.currentExperience?.trim() || !body.targetOutcome?.trim()) {
-    res.status(400).json({ error: 'Goal, current experience, and target outcome are required' });
+  const body =
+    req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? (req.body as Record<string, unknown>)
+      : {};
+  const profile = planProfile(body);
+  if (!profile) {
+    res.status(400).json({ error: 'Learning goal is required' });
+    return;
+  }
+  const diagnostic = Array.isArray(body.diagnostic)
+    ? body.diagnostic.flatMap((item): DiagnosticAnswer[] => {
+        if (!item || typeof item !== 'object') return [];
+        const value = item as Record<string, unknown>;
+        const question = typeof value.question === 'string' ? value.question.trim() : '';
+        const answer =
+          typeof value.answer === 'string' ? value.answer.trim().slice(0, 5_000) : '';
+        return question && answer ? [{ question, answer }] : [];
+      })
+    : [];
+  if (diagnostic.length !== 3) {
+    res.status(400).json({ error: 'Complete all three prerequisite diagnostic questions' });
     return;
   }
   if (!(await isCodexConnected())) {
@@ -38,18 +93,12 @@ export async function postPlan(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const planInput = {
-    goal: body.goal.trim(),
-    currentExperience: body.currentExperience.trim(),
-    targetOutcome: body.targetOutcome.trim(),
-  };
-  const research = await researchLearningGoal(planInput);
-  const generated = await generateCurriculum({ ...planInput, research });
+  const research = await researchLearningGoal(profile);
+  const generated = await generateCurriculum({ ...profile, diagnostic, research });
   const result = createPlan({
     title: generated.title,
-    goal: body.goal.trim(),
-    currentExperience: body.currentExperience.trim(),
-    targetOutcome: body.targetOutcome.trim(),
+    ...profile,
+    diagnosticContext: JSON.stringify(diagnostic),
     researchContext: JSON.stringify(research),
     nodes: generated.nodes,
   });

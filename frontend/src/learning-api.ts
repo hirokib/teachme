@@ -6,6 +6,7 @@ export type LearningPlan = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  diagnosticContext: string;
   researchContext: string;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +30,7 @@ export type LearningNode = {
 };
 
 export type PlanDetail = { plan: LearningPlan; nodes: LearningNode[] };
+export type DiagnosticAnswer = { question: string; answer: string };
 
 export type StudyDetail = {
   plan: LearningPlan;
@@ -66,6 +68,7 @@ export async function createLearningPlan(input: {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  diagnostic: DiagnosticAnswer[];
 }): Promise<PlanDetail> {
   return json(
     await fetch(`${API_URL}/api/plans`, {
@@ -74,6 +77,21 @@ export async function createLearningPlan(input: {
       body: JSON.stringify(input),
     })
   );
+}
+
+export async function generatePlanDiagnostic(input: {
+  goal: string;
+  currentExperience: string;
+  targetOutcome: string;
+}): Promise<string[]> {
+  const result = await json<{ questions: string[] }>(
+    await fetch(`${API_URL}/api/plans/diagnostic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  );
+  return result.questions;
 }
 
 export async function getPlan(id: number): Promise<PlanDetail> {

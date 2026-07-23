@@ -16,6 +16,7 @@ import {
   postAssessment,
   postAssessmentQuestion,
   postPlan,
+  postPlanDiagnostic,
   postTutorMessage,
 } from './learning-api.js';
 import {
@@ -46,6 +47,7 @@ app.delete('/api/auth/codex', logoutCodex);
 app.post('/api/codex/chat', codexChat);
 
 app.get('/api/plans', getPlans);
+app.post('/api/plans/diagnostic', postPlanDiagnostic);
 app.post('/api/plans', postPlan);
 app.get('/api/plans/:id', getPlanById);
 app.get('/api/nodes/:id', getNodeById);

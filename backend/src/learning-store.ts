@@ -5,6 +5,7 @@ export type PlanInput = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  diagnosticContext?: string;
   researchContext?: string;
   nodes: CurriculumNodeInput[];
 };
@@ -24,6 +25,7 @@ export type LearningPlan = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  diagnosticContext: string;
   researchContext: string;
   createdAt: string;
   updatedAt: string;
@@ -73,6 +75,7 @@ function mapPlan(row: Record<string, SqlValue>): LearningPlan {
     goal: String(row.goal),
     currentExperience: String(row.current_experience),
     targetOutcome: String(row.target_outcome),
+    diagnosticContext: String(row.diagnostic_context ?? ''),
     researchContext: String(row.research_context ?? ''),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -126,9 +129,16 @@ export function createPlan(input: PlanInput): { plan: LearningPlan; nodes: Learn
   try {
     db.run(
       `INSERT INTO learning_plans
-        (title, goal, current_experience, target_outcome, research_context)
-       VALUES (?, ?, ?, ?, ?)`,
-      [input.title, input.goal, input.currentExperience, input.targetOutcome, input.researchContext ?? '']
+        (title, goal, current_experience, target_outcome, diagnostic_context, research_context)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        input.title,
+        input.goal,
+        input.currentExperience,
+        input.targetOutcome,
+        input.diagnosticContext ?? '',
+        input.researchContext ?? '',
+      ]
     );
     const planId = Number(rows('SELECT last_insert_rowid() AS id')[0]?.id);
     let order = 0;

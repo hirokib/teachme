@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { createLearningPlan, listPlans, type LearningPlan } from './learning-api';
+import {
+  createLearningPlan,
+  generatePlanDiagnostic,
+  listPlans,
+  type LearningPlan,
+} from './learning-api';
 
 const RESEARCH_MESSAGES = [
   'Following citation breadcrumbs…',
@@ -18,6 +23,9 @@ export function LearningHome() {
   const [goal, setGoal] = useState('');
   const [experience, setExperience] = useState('');
   const [outcome, setOutcome] = useState('');
+  const [diagnosticQuestions, setDiagnosticQuestions] = useState<string[]>([]);
+  const [diagnosticAnswers, setDiagnosticAnswers] = useState<string[]>([]);
+  const [diagnosing, setDiagnosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [researchMessage, setResearchMessage] = useState(0);
   const [error, setError] = useState('');
@@ -39,13 +47,35 @@ export function LearningHome() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setCreating(true);
     setError('');
+    if (diagnosticQuestions.length === 0) {
+      setDiagnosing(true);
+      try {
+        const questions = await generatePlanDiagnostic({
+          goal,
+          currentExperience: experience,
+          targetOutcome: outcome,
+        });
+        setDiagnosticQuestions(questions);
+        setDiagnosticAnswers(questions.map(() => ''));
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setDiagnosing(false);
+      }
+      return;
+    }
+
+    setCreating(true);
     try {
       const created = await createLearningPlan({
         goal,
         currentExperience: experience,
         targetOutcome: outcome,
+        diagnostic: diagnosticQuestions.map((question, index) => ({
+          question,
+          answer: diagnosticAnswers[index]?.trim() ?? '',
+        })),
       });
       await navigate({ to: '/plans/$planId', params: { planId: String(created.plan.id) } });
     } catch (cause) {
@@ -66,22 +96,58 @@ export function LearningHome() {
       </section>
 
       <form onSubmit={submit} className="pop grid gap-5 rounded-2xl bg-card p-6">
-        <label className="grid gap-2 text-sm font-medium">
-          Learning goal
-          <input required value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="Understand linear algebra" className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
-        </label>
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium">
-            What do you already know?
-            <textarea required value={experience} onChange={(event) => setExperience(event.target.value)} placeholder="I know high-school algebra, but matrices are new." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            What should you be able to do?
-            <textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Understand transformations and solve practical problems." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
-          </label>
-        </div>
+        {diagnosticQuestions.length === 0 ? (
+          <>
+            <label className="grid gap-2 text-sm font-medium">
+              Learning goal
+              <input required value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="Understand linear algebra" className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
+            </label>
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-medium">
+                <span>What do you already know? <span className="font-normal text-muted-foreground">(optional)</span></span>
+                <textarea value={experience} onChange={(event) => setExperience(event.target.value)} placeholder="I know high-school algebra, but matrices are new." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                <span>What should you be able to do? <span className="font-normal text-muted-foreground">(optional)</span></span>
+                <textarea value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Understand transformations and solve practical problems." className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
+              </label>
+            </div>
+          </>
+        ) : (
+          <section className="space-y-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Quick prerequisite check</p>
+              <h2 className="mt-1 text-xl font-semibold">Show what you already know</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Answer without looking anything up. “I’m not sure” is useful evidence and helps the plan start in the right place.</p>
+            </div>
+            {diagnosticQuestions.map((question, index) => (
+              <label key={question} className="grid gap-2 text-sm font-medium">
+                <span>{index + 1}. {question}</span>
+                <textarea
+                  required
+                  maxLength={5000}
+                  value={diagnosticAnswers[index] ?? ''}
+                  onChange={(event) => setDiagnosticAnswers((current) =>
+                    current.map((answer, answerIndex) => answerIndex === index ? event.target.value : answer)
+                  )}
+                  placeholder="Explain briefly in your own words…"
+                  className="min-h-24 rounded-md border bg-background px-3 py-2 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                />
+              </label>
+            ))}
+          </section>
+        )}
         <div className="flex items-center gap-4">
-          <Button type="submit" className="pop pop-ink rounded-xl" disabled={creating}>{creating ? 'Researching and designing…' : 'Create learning plan'}</Button>
+          {diagnosticQuestions.length > 0 && !creating && (
+            <Button type="button" variant="outline" onClick={() => {
+              setDiagnosticQuestions([]);
+              setDiagnosticAnswers([]);
+              setError('');
+            }}>Edit goal</Button>
+          )}
+          <Button type="submit" className="pop pop-ink rounded-xl" disabled={creating || diagnosing}>
+            {diagnosing ? 'Writing diagnostic…' : creating ? 'Researching and designing…' : diagnosticQuestions.length ? 'Create learning plan' : 'Continue to quick check'}
+          </Button>
           <span className="text-sm text-muted-foreground">Uses live web research · Requires ChatGPT sign-in</span>
         </div>
         {creating && (

@@ -3,6 +3,24 @@ import type { CurriculumNodeInput, LearningNode, LearningPlan } from './learning
 import type { LearningResearch } from './learning-research.js';
 
 type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
+export type DiagnosticAnswer = { question: string; answer: string };
+
+export async function generatePrerequisiteDiagnostic(input: {
+  goal: string;
+  currentExperience: string;
+  targetOutcome: string;
+}): Promise<{ questions: string[] }> {
+  const result = await completeCodexJson<{ questions: string[] }>(
+    `You design short prerequisite diagnostics. Return only JSON: {"questions":["..."]}.
+Write exactly three open-response questions that reveal whether the learner has the most important prerequisite knowledge for the stated goal. Questions should require brief reasoning or explanation, not trivia, self-rating, or multiple choice. Do not teach or reveal answers.`,
+    `Learning goal: ${input.goal}\nReported experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}`
+  );
+  const questions = Array.isArray(result.questions)
+    ? result.questions.filter((question) => typeof question === 'string' && question.trim()).map((question) => question.trim())
+    : [];
+  if (questions.length !== 3) throw new Error('Codex returned an invalid prerequisite diagnostic');
+  return { questions };
+}
 
 const CURRICULUM_SYSTEM = `You are an expert curriculum designer. Create a compact, logically ordered learning plan personalized to the learner.
 Return only valid JSON with this shape:
@@ -20,11 +38,12 @@ export async function generateCurriculum(input: {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  diagnostic: DiagnosticAnswer[];
   research: LearningResearch;
 }): Promise<CurriculumResponse> {
   const result = await completeCodexJson<CurriculumResponse>(
     CURRICULUM_SYSTEM,
-    `Learning goal: ${input.goal}\nCurrent experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}\n\nInternet research (retrieved from primary sources):\n${JSON.stringify(input.research)}`
+    `Learning goal: ${input.goal}\nReported experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}\n\nPrerequisite diagnostic responses:\n${JSON.stringify(input.diagnostic)}\n\nUse the diagnostic evidence—not just the learner's self-report—to choose the starting level, omit material they clearly command, and include missing prerequisites before dependent concepts.\n\nInternet research (retrieved from primary sources):\n${JSON.stringify(input.research)}`
   );
   const validNode = (node: CurriculumNodeInput): boolean =>
     Boolean(
@@ -52,6 +71,7 @@ function tutorSystem(plan: LearningPlan, node: LearningNode, related: LearningNo
 Learner goal: ${plan.goal}
 Learner background: ${plan.currentExperience}
 Desired outcome: ${plan.targetOutcome}
+Prerequisite diagnostic: ${plan.diagnosticContext || 'No prerequisite diagnostic was recorded.'}
 Current concept: ${node.title}
 Summary: ${node.summary}
 Learning objective: ${node.learningObjective}

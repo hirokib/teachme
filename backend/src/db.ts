@@ -21,6 +21,7 @@ export async function initDb() {
       goal TEXT NOT NULL,
       current_experience TEXT NOT NULL,
       target_outcome TEXT NOT NULL,
+      diagnostic_context TEXT NOT NULL DEFAULT '',
       research_context TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -114,6 +115,9 @@ export async function initDb() {
   const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0];
   if (!planColumns?.values.some((column) => column[1] === 'research_context')) {
     db.run("ALTER TABLE learning_plans ADD COLUMN research_context TEXT NOT NULL DEFAULT ''");
+  }
+  if (!planColumns?.values.some((column) => column[1] === 'diagnostic_context')) {
+    db.run("ALTER TABLE learning_plans ADD COLUMN diagnostic_context TEXT NOT NULL DEFAULT ''");
   }
   if (planColumns?.values.some((column) => column[1] === 'time_budget_minutes')) {
     db.run('ALTER TABLE learning_plans DROP COLUMN time_budget_minutes');
