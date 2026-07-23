@@ -20,10 +20,14 @@ import {
 type BranchDraft = { message: ExplorationMessage; excerpt: string; intent: ThreadIntent; contextScope: 'selection' | 'recent' | 'full'; continuation: string };
 const INTENT_HELP: Record<ThreadIntent, string> = {
   explore: 'Clarify terms, examine alternatives, and discover questions.',
-  verify: 'Identify claims and evaluate them with linked citations where possible.',
+  verify: 'Analyze what evidence would support or refute a claim.',
   learn: 'Explain one idea at a time and check understanding.',
 };
-const INTENT_LABEL: Record<ThreadIntent, string> = { explore: 'Explore', verify: 'Verify', learn: 'Learn' };
+const INTENT_LABEL: Record<ThreadIntent, string> = {
+  explore: 'Explore',
+  verify: 'Analyze claims',
+  learn: 'Learn',
+};
 const SCOPE_LABEL: Record<BranchDraft['contextScope'], string> = { selection: 'Selection only', recent: 'Recent exchange', full: 'Full parent thread' };
 const VERIFICATION_LABEL: Record<NonNullable<MessageVerification['result']>['overallStatus'], string> = { supported: 'Supported', mostly_supported: 'Mostly supported', mixed: 'Mixed', mostly_unsupported: 'Mostly unsupported', unsupported: 'Unsupported', unclear: 'Unclear' };
 const VERDICT_STYLE: Record<string, string> = { supported: 'bg-success/20 text-success-foreground', partially_supported: 'bg-warning/25 text-warning-foreground', disputed: 'bg-destructive/15 text-destructive', unverified: 'bg-muted text-muted-foreground' };
@@ -58,7 +62,8 @@ export function ExplorationWorkspace() {
   }, []);
 
   async function load() {
-    const [spaceResult, threadResult] = await Promise.all([getExploration(Number(spaceId)), getExplorationThread(Number(threadId))]);
+    const threadResult = await getExplorationThread(Number(threadId));
+    const spaceResult = await getExploration(threadResult.thread.spaceId);
     setSpace(spaceResult); setDetail(threadResult); setMessages(threadResult.messages);
     setVerifications(Object.fromEntries((threadResult.verifications ?? []).map((verification) => [verification.messageId, verification])));
     return threadResult;

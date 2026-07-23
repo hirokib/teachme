@@ -140,6 +140,13 @@ body,
    hard shadow. Colour comes from --pop; pop-success/-warning/-ink just swap it.
    In @layer utilities so it beats shadcn's built-in shadow-xs. */
 @layer utilities {
+  @keyframes learning-plan-loader {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(310%); }
+  }
+  .learning-plan-loader {
+    animation: learning-plan-loader 1.65s ease-in-out infinite;
+  }
   .pop {
     --pop: var(--primary);
     --pop-offset: 8px;
@@ -175,6 +182,13 @@ body,
   }
   .pop-ink {
     --pop: var(--foreground);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learning-plan-loader {
+    animation: none;
+    transform: translateX(100%);
   }
 }
 

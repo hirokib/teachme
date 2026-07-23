@@ -3,6 +3,15 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { createLearningPlan, listPlans, type LearningPlan } from './learning-api';
 
+const RESEARCH_MESSAGES = [
+  'Following citation breadcrumbs…',
+  'Interrogating the footnotes…',
+  'Peeking under the repository floorboards…',
+  'Connecting suspiciously important dots…',
+  'Arranging the conceptual dominoes…',
+  'Convincing the syllabus to behave…',
+];
+
 export function LearningHome() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<LearningPlan[]>([]);
@@ -10,11 +19,23 @@ export function LearningHome() {
   const [experience, setExperience] = useState('');
   const [outcome, setOutcome] = useState('');
   const [creating, setCreating] = useState(false);
+  const [researchMessage, setResearchMessage] = useState(0);
   const [error, setError] = useState('');
 
   useEffect(() => {
     listPlans().then(setPlans).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)));
   }, []);
+
+  useEffect(() => {
+    if (!creating) {
+      setResearchMessage(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setResearchMessage((current) => (current + 1) % RESEARCH_MESSAGES.length);
+    }, 2200);
+    return () => window.clearInterval(timer);
+  }, [creating]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -40,7 +61,7 @@ export function LearningHome() {
         <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">✦ Adaptive learning workspace</p>
         <h1 className="text-4xl font-semibold tracking-tight">What do you want to understand?</h1>
         <p className="mt-3 text-muted-foreground">
-          TeachMe creates a focused path, teaches one concept at a time, and checks what you can actually explain.
+          TeachMe researches your topic and links, creates a source-grounded path, teaches one concept at a time, and checks what you can actually explain.
         </p>
       </section>
 
@@ -60,9 +81,20 @@ export function LearningHome() {
           </label>
         </div>
         <div className="flex items-center gap-4">
-          <Button type="submit" className="pop pop-ink rounded-xl" disabled={creating}>{creating ? 'Designing your path…' : 'Create learning plan'}</Button>
-          <span className="text-sm text-muted-foreground">Requires ChatGPT sign-in</span>
+          <Button type="submit" className="pop pop-ink rounded-xl" disabled={creating}>{creating ? 'Researching and designing…' : 'Create learning plan'}</Button>
+          <span className="text-sm text-muted-foreground">Uses live web research · Requires ChatGPT sign-in</span>
         </div>
+        {creating && (
+          <div role="status" aria-live="polite" className="rounded-xl bg-accent/60 p-4">
+            <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+              <span className="font-medium">{RESEARCH_MESSAGES[researchMessage]}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">This can take a minute</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-background" aria-hidden="true">
+              <div className="learning-plan-loader h-full w-1/3 rounded-full bg-gradient-to-r from-primary via-chart-4 to-success" />
+            </div>
+          </div>
+        )}
         {error && <p className="text-sm text-destructive">{error} {error.includes('Sign in') && <Link to="/chat" className="underline">Open sign-in</Link>}</p>}
       </form>
 

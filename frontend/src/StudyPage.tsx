@@ -24,12 +24,10 @@ const ACTION_LABELS: Record<string, string> = {
   complete: 'Move to the next concept',
 };
 
-// mastered → green, partial → amber, everything else stays neutral
 const RESULT_STYLES: Record<string, string> = {
   mastered: 'bg-success text-success-foreground',
-  correct: 'bg-success text-success-foreground',
   partial: 'bg-warning text-warning-foreground',
-  incorrect: 'bg-destructive/10 text-destructive',
+  not_yet: 'bg-destructive/10 text-destructive',
 };
 
 export function StudyPage() {
@@ -41,7 +39,6 @@ export function StudyPage() {
   const [note, setNote] = useState('');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
-  const [confidence, setConfidence] = useState(50);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -107,7 +104,7 @@ export function StudyPage() {
     setChecking(true);
     setError('');
     try {
-      const result = await assessAnswer(id, { question, response: answer, confidence });
+      const result = await assessAnswer(id, { question, response: answer });
       setAssessment(result);
       setStudy((current) => current ? { ...current, node: result.progress } : current);
     } catch (cause) {
@@ -161,15 +158,15 @@ export function StudyPage() {
                 ? <Prose key={index} className="mr-8 rounded-2xl rounded-bl-sm border border-primary/10 bg-card p-3 text-sm leading-relaxed shadow-sm">{item.content}</Prose>
                 : <div key={index} className="mr-8 animate-pulse rounded-2xl rounded-bl-sm border border-primary/10 bg-card p-3 text-sm text-muted-foreground">Thinking…</div>)}
           </div>
-          <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex gap-2"><input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask for an example, go deeper, or explain your confusion…" className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
+          <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex items-end gap-2"><textarea rows={1} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendTutor(message); } }} placeholder="Ask for an example, go deeper, or explain your confusion…" className="max-h-40 min-h-10 flex-1 resize-y rounded-2xl border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
           <div className="flex flex-wrap gap-2">{['Continue', 'Explain simply', 'Show an example'].map((label) => <Button key={label} size="sm" variant="outline" className="pop rounded-lg" disabled={busy} onClick={() => void sendTutor(label)}>{label}</Button>)}</div>
         </section>
 
         <aside className="space-y-5">
           <section className="pop rounded-2xl bg-accent/40 p-5"><h2 className="font-semibold">Learning target</h2><p className="mt-2 text-sm text-muted-foreground">{study.node.learningObjective}</p><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Evidence of completion</h3><p className="mt-2 text-sm">{study.node.completionCriteria}</p></section>
 
-          <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
-            {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4"><p className="text-sm font-medium">{question}</p><textarea required value={answer} onChange={(event) => setAnswer(event.target.value)} className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Explain in your own words…" /><label className="grid gap-2 text-xs text-muted-foreground">How confident are you? {confidence}%<input type="range" min="0" max="100" value={confidence} onChange={(event) => setConfidence(Number(event.target.value))} /></label><Button className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : 'Check my understanding'}</Button></form>}
+          <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
+            {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4"><p className="text-sm font-medium">{question}</p><textarea required value={answer} onChange={(event) => setAnswer(event.target.value)} className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Explain in your own words…" /><Button type="submit" className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : 'Check my understanding'}</Button>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}</form>}
             {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{assessment.result.replace('_', ' ')}</span><p className="text-sm">{assessment.feedback}</p>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}>{item}</li>)}</ul></div>}<Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button></div>}
           </section>
 
@@ -178,7 +175,7 @@ export function StudyPage() {
           {study.node.misconceptions.length > 0 && <section className="pop pop-warning rounded-2xl bg-warning/10 p-5"><h2 className="font-semibold">Active gaps</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{study.node.misconceptions.map((item) => <li key={item}>{item}</li>)}</ul></section>}
         </aside>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (!question || assessment) && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

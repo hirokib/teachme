@@ -5,6 +5,7 @@ export type PlanInput = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  researchContext?: string;
   nodes: CurriculumNodeInput[];
 };
 
@@ -23,7 +24,7 @@ export type LearningPlan = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
-  status: string;
+  researchContext: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,11 +42,8 @@ export type LearningNode = {
   orderIndex: number;
   status: string;
   masteryScore: number;
-  confidence: number;
   attemptCount: number;
   misconceptions: string[];
-  lastReviewedAt: string | null;
-  nextReviewAt: string | null;
 };
 
 type SqlValue = string | number | Uint8Array | null;
@@ -75,7 +73,7 @@ function mapPlan(row: Record<string, SqlValue>): LearningPlan {
     goal: String(row.goal),
     currentExperience: String(row.current_experience),
     targetOutcome: String(row.target_outcome),
-    status: String(row.status),
+    researchContext: String(row.research_context ?? ''),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -95,17 +93,13 @@ function mapNode(row: Record<string, SqlValue>): LearningNode {
     orderIndex: Number(row.order_index),
     status: String(row.status),
     masteryScore: Number(row.mastery_score ?? 0),
-    confidence: Number(row.confidence ?? 0),
     attemptCount: Number(row.attempt_count ?? 0),
     misconceptions: parseList(row.misconceptions_json),
-    lastReviewedAt: row.last_reviewed_at ? String(row.last_reviewed_at) : null,
-    nextReviewAt: row.next_review_at ? String(row.next_review_at) : null,
   };
 }
 
 const NODE_SELECT = `
-  SELECT n.*, p.mastery_score, p.confidence, p.attempt_count,
-    p.misconceptions_json, p.last_reviewed_at, p.next_review_at
+  SELECT n.*, p.mastery_score, p.attempt_count, p.misconceptions_json
   FROM learning_nodes n
   LEFT JOIN learner_progress p ON p.node_id = n.id
 `;
@@ -132,9 +126,9 @@ export function createPlan(input: PlanInput): { plan: LearningPlan; nodes: Learn
   try {
     db.run(
       `INSERT INTO learning_plans
-        (title, goal, current_experience, target_outcome)
-       VALUES (?, ?, ?, ?)`,
-      [input.title, input.goal, input.currentExperience, input.targetOutcome]
+        (title, goal, current_experience, target_outcome, research_context)
+       VALUES (?, ?, ?, ?, ?)`,
+      [input.title, input.goal, input.currentExperience, input.targetOutcome, input.researchContext ?? '']
     );
     const planId = Number(rows('SELECT last_insert_rowid() AS id')[0]?.id);
     let order = 0;
@@ -186,23 +180,8 @@ export function getNodeStudy(nodeId: number) {
     content: String(row.content),
     createdAt: String(row.created_at),
   }));
-  const assessments = rows(
-    'SELECT * FROM assessments WHERE node_id = ? ORDER BY id DESC LIMIT 10',
-    [nodeId]
-  ).map((row) => ({
-    id: Number(row.id),
-    question: String(row.question),
-    response: String(row.response),
-    result: String(row.result),
-    strengths: parseList(row.strengths_json),
-    gaps: parseList(row.gaps_json),
-    nextAction: String(row.next_action),
-    feedback: String(row.feedback),
-    confidence: Number(row.confidence),
-    createdAt: String(row.created_at),
-  }));
   const note = rows('SELECT content FROM node_notes WHERE node_id = ?', [nodeId])[0];
-  return { node, plan: plan.plan, allNodes: plan.nodes, messages, assessments, note: String(note?.content ?? '') };
+  return { node, plan: plan.plan, allNodes: plan.nodes, messages, note: String(note?.content ?? '') };
 }
 
 export function addStudyMessage(nodeId: number, role: 'user' | 'assistant', content: string): void {
@@ -220,14 +199,8 @@ export function saveNote(nodeId: number, content: string): void {
 }
 
 export type AssessmentInput = {
-  question: string;
-  response: string;
   result: 'not_yet' | 'partial' | 'mastered';
-  strengths: string[];
   gaps: string[];
-  nextAction: string;
-  feedback: string;
-  confidence: number;
   masteryScore: number;
 };
 
@@ -236,35 +209,15 @@ export function saveAssessment(nodeId: number, input: AssessmentInput): void {
   const current = getNode(nodeId);
   if (!current) throw new Error('Node not found');
   const misconceptions = Array.from(new Set([...current.misconceptions, ...input.gaps])).slice(-12);
-  const days = input.result === 'mastered' ? 7 : input.result === 'partial' ? 2 : 1;
-  const nextReview = new Date(Date.now() + days * 86_400_000).toISOString();
   const status = input.result === 'mastered' ? 'completed' : 'in_progress';
 
   db.run('BEGIN');
   try {
     db.run(
-      `INSERT INTO assessments
-        (node_id, question, response, result, strengths_json, gaps_json,
-         next_action, feedback, confidence)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        nodeId,
-        input.question,
-        input.response,
-        input.result,
-        JSON.stringify(input.strengths),
-        JSON.stringify(input.gaps),
-        input.nextAction,
-        input.feedback,
-        input.confidence,
-      ]
-    );
-    db.run(
-      `UPDATE learner_progress SET mastery_score = ?, confidence = ?,
-       attempt_count = attempt_count + 1, misconceptions_json = ?,
-       last_reviewed_at = CURRENT_TIMESTAMP, next_review_at = ?, updated_at = CURRENT_TIMESTAMP
+      `UPDATE learner_progress SET mastery_score = ?,
+       attempt_count = attempt_count + 1, misconceptions_json = ?, updated_at = CURRENT_TIMESTAMP
        WHERE node_id = ?`,
-      [input.masteryScore, input.confidence, JSON.stringify(misconceptions), nextReview, nodeId]
+      [input.masteryScore, JSON.stringify(misconceptions), nodeId]
     );
     db.run('UPDATE learning_nodes SET status = ? WHERE id = ?', [status, nodeId]);
     db.run('COMMIT');

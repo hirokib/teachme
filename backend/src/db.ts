@@ -12,14 +12,7 @@ export async function initDb() {
   const SQL = await initSqlJs();
   const data = fs.existsSync(DB_PATH) ? fs.readFileSync(DB_PATH) : null;
   db = data ? new SQL.Database(data) : new SQL.Database();
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS greetings (
-      id INTEGER PRIMARY KEY,
-      message TEXT NOT NULL
-    )
-  `);
-  db.run(`INSERT OR IGNORE INTO greetings (id, message) VALUES (1, 'Hello World')`);
+  db.run('PRAGMA foreign_keys = ON');
 
   db.run(`
     CREATE TABLE IF NOT EXISTS learning_plans (
@@ -28,7 +21,7 @@ export async function initDb() {
       goal TEXT NOT NULL,
       current_experience TEXT NOT NULL,
       target_outcome TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active',
+      research_context TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -53,11 +46,8 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS learner_progress (
       node_id INTEGER PRIMARY KEY,
       mastery_score INTEGER NOT NULL DEFAULT 0,
-      confidence INTEGER NOT NULL DEFAULT 0,
       attempt_count INTEGER NOT NULL DEFAULT 0,
       misconceptions_json TEXT NOT NULL DEFAULT '[]',
-      last_reviewed_at TEXT,
-      next_review_at TEXT,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
@@ -67,21 +57,6 @@ export async function initDb() {
       node_id INTEGER NOT NULL,
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
       content TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS assessments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      node_id INTEGER NOT NULL,
-      question TEXT NOT NULL,
-      response TEXT NOT NULL,
-      result TEXT NOT NULL,
-      strengths_json TEXT NOT NULL DEFAULT '[]',
-      gaps_json TEXT NOT NULL DEFAULT '[]',
-      next_action TEXT NOT NULL,
-      feedback TEXT NOT NULL,
-      confidence INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
@@ -109,7 +84,6 @@ export async function initDb() {
       title TEXT NOT NULL,
       intent TEXT NOT NULL DEFAULT 'explore' CHECK (intent IN ('explore', 'verify', 'learn')),
       context_summary TEXT NOT NULL DEFAULT '',
-      branch_summary TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (space_id) REFERENCES exploration_spaces(id) ON DELETE CASCADE,
@@ -138,11 +112,30 @@ export async function initDb() {
   `);
 
   const planColumns = db.exec('PRAGMA table_info(learning_plans)')[0];
+  if (!planColumns?.values.some((column) => column[1] === 'research_context')) {
+    db.run("ALTER TABLE learning_plans ADD COLUMN research_context TEXT NOT NULL DEFAULT ''");
+  }
   if (planColumns?.values.some((column) => column[1] === 'time_budget_minutes')) {
     db.run('ALTER TABLE learning_plans DROP COLUMN time_budget_minutes');
   }
+  if (planColumns?.values.some((column) => column[1] === 'status')) {
+    db.run('ALTER TABLE learning_plans DROP COLUMN status');
+  }
 
-  db.run('PRAGMA foreign_keys = ON');
+  const progressColumns = db.exec('PRAGMA table_info(learner_progress)')[0];
+  for (const column of ['confidence', 'last_reviewed_at', 'next_review_at']) {
+    if (progressColumns?.values.some((candidate) => candidate[1] === column)) {
+      db.run(`ALTER TABLE learner_progress DROP COLUMN ${column}`);
+    }
+  }
+
+  const threadColumns = db.exec('PRAGMA table_info(exploration_threads)')[0];
+  if (threadColumns?.values.some((column) => column[1] === 'branch_summary')) {
+    db.run('ALTER TABLE exploration_threads DROP COLUMN branch_summary');
+  }
+
+  db.run('DROP TABLE IF EXISTS greetings');
+  db.run('DROP TABLE IF EXISTS assessments');
 
   saveDb();
   return db;

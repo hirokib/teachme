@@ -11,6 +11,7 @@ import {
   saveNote,
 } from './learning-store.js';
 import { isCodexConnected } from './codex.js';
+import { researchLearningGoal } from './learning-research.js';
 
 function numericId(value: string | string[]): number | null {
   if (Array.isArray(value)) return null;
@@ -37,16 +38,19 @@ export async function postPlan(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const generated = await generateCurriculum({
+  const planInput = {
     goal: body.goal.trim(),
     currentExperience: body.currentExperience.trim(),
     targetOutcome: body.targetOutcome.trim(),
-  });
+  };
+  const research = await researchLearningGoal(planInput);
+  const generated = await generateCurriculum({ ...planInput, research });
   const result = createPlan({
     title: generated.title,
     goal: body.goal.trim(),
     currentExperience: body.currentExperience.trim(),
     targetOutcome: body.targetOutcome.trim(),
+    researchContext: JSON.stringify(research),
     nodes: generated.nodes,
   });
   res.status(201).json(result);
@@ -138,7 +142,6 @@ export async function postAssessment(req: Request, res: Response): Promise<void>
   const node = id ? getNode(id) : null;
   const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
   const response = typeof req.body?.response === 'string' ? req.body.response.trim() : '';
-  const confidence = Math.max(0, Math.min(100, Number(req.body?.confidence) || 0));
   if (!node) {
     res.status(404).json({ error: 'Learning node not found' });
     return;
@@ -148,8 +151,12 @@ export async function postAssessment(req: Request, res: Response): Promise<void>
     return;
   }
   const assessment = await assessResponse(node, question, response);
-  saveAssessment(node.id, { ...assessment, question, response, confidence });
-  res.json({ ...assessment, confidence, progress: getNode(node.id) });
+  saveAssessment(node.id, {
+    result: assessment.result,
+    gaps: assessment.gaps,
+    masteryScore: assessment.masteryScore,
+  });
+  res.json({ ...assessment, progress: getNode(node.id) });
 }
 
 export function patchNodeNote(req: Request, res: Response): void {

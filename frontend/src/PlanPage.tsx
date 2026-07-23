@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { getPlan, type PlanDetail } from './learning-api';
 
+type PlanResearch = { summary?: string; sources?: { title: string; url: string; relevance?: string }[] };
+
+function readResearch(value: string): PlanResearch | null {
+  try {
+    const parsed = JSON.parse(value) as PlanResearch;
+    return Array.isArray(parsed.sources) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function PlanPage() {
   const { planId } = useParams({ strict: false });
   const [detail, setDetail] = useState<PlanDetail | null>(null);
@@ -15,6 +26,7 @@ export function PlanPage() {
   if (!detail) return <p className="text-muted-foreground">Loading learning plan…</p>;
 
   const completed = detail.nodes.filter((node) => node.status === 'completed').length;
+  const research = readResearch(detail.plan.researchContext);
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
@@ -26,6 +38,21 @@ export function PlanPage() {
           <span>{completed}/{detail.nodes.length} mastered</span>
         </div>
       </header>
+
+      {research?.sources?.length ? (
+        <details className="pop rounded-2xl bg-card p-5">
+          <summary className="cursor-pointer font-semibold">Sources used to create this plan ({research.sources.length})</summary>
+          {research.summary && <p className="mt-3 text-sm text-muted-foreground">{research.summary}</p>}
+          <ul className="mt-4 grid gap-3">
+            {research.sources.map((source) => (
+              <li key={source.url} className="text-sm">
+                <a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">{source.title} ↗</a>
+                {source.relevance && <p className="mt-1 text-muted-foreground">{source.relevance}</p>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       <ol className="space-y-3">
         {detail.nodes.map((node, index) => (

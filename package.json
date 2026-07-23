@@ -2,6 +2,7 @@
   "name": "teachme",
   "version": "1.0.0",
   "description": "Interactive learning platform",
+  "license": "ISC",
   "engines": {
     "node": ">=22.19.0"
   },

@@ -54,22 +54,41 @@ function getModel() {
   return model;
 }
 
+export function addWebSearchTool(payload: unknown): unknown {
+  const body = payload as { tools?: unknown[] };
+  return {
+    ...body,
+    tools: [...(Array.isArray(body.tools) ? body.tools : []), { type: 'web_search' }],
+  };
+}
+
 export async function isCodexConnected(): Promise<boolean> {
   return hasCredential();
 }
 
-export async function completeCodex(context: Context): Promise<string> {
+export async function completeCodex(
+  context: Context,
+  options: { signal?: AbortSignal; webSearch?: boolean } = {}
+): Promise<string> {
   if (!(await hasCredential())) throw new Error('Sign in with ChatGPT first');
-  const message = await models.completeSimple(getModel(), context, { reasoning: 'medium' });
+  const message = await models.completeSimple(getModel(), context, {
+    reasoning: 'medium',
+    signal: options.signal,
+    onPayload: options.webSearch ? addWebSearchTool : undefined,
+  });
   if (message.stopReason === 'error') throw new Error(message.errorMessage || 'Codex request failed');
   return contentText(message.content).trim();
 }
 
-export async function completeCodexJson<T>(systemPrompt: string, prompt: string): Promise<T> {
+export async function completeCodexJson<T>(
+  systemPrompt: string,
+  prompt: string,
+  options: { signal?: AbortSignal; webSearch?: boolean } = {}
+): Promise<T> {
   const text = await completeCodex({
     systemPrompt,
     messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
-  });
+  }, options);
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   return JSON.parse(cleaned) as T;
 }

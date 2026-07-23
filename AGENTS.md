@@ -1,6 +1,7 @@
 # TeachMe
 
-Hello-world monorepo: `backend/` (Express + sql.js) and `frontend/` (Vite + React).
+Local-first learning and exploration monorepo: `backend/` (Express + sql.js) and
+`frontend/` (Vite + React).
 
 ## UI
 
@@ -18,15 +19,15 @@ Uses **shadcn/ui** on **Radix UI** primitives, styled with **Tailwind CSS v4**.
 
 ## LLM calls
 
-Uses the **Vercel AI SDK** (`ai`) — provider-agnostic on purpose.
+Uses `@earendil-works/pi-ai` with the OpenAI Codex provider and ChatGPT sign-in.
 
-- The provider is named in exactly one place: the `openai(...)` call in
-  `backend/src/index.ts`. Swap `@ai-sdk/openai` for another `@ai-sdk/*` package
-  and change that line; nothing else moves.
-- The API key is server-side only. The browser talks to `POST /api/chat`, never
-  to a provider. Never move the key or a provider SDK into `frontend/`.
-- `useChat` messages are **part arrays** (`m.parts`), not a `content` string.
-- Needs `OPENAI_API_KEY` in `backend/.env`.
+- Provider setup and the model default live in `backend/src/codex.ts`.
+- The browser talks only to backend endpoints. Never move credentials or a provider SDK
+  into `frontend/`.
+- Research and verification enable the Responses API hosted `web_search` tool through
+  the same authenticated model layer; do not spawn the Codex CLI.
+- ChatGPT OAuth credentials are stored in ignored `backend/auth.json`.
+- `OPENAI_CODEX_MODEL` can override the default model.
 
 ## Commands
 

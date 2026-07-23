@@ -1,5 +1,6 @@
 import { completeCodexJson, streamCodex } from './codex.js';
 import type { CurriculumNodeInput, LearningNode, LearningPlan } from './learning-store.js';
+import type { LearningResearch } from './learning-research.js';
 
 type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
 
@@ -12,16 +13,18 @@ Rules:
 - Order concepts from foundational to applied.
 - Make every learning objective observable and every completion criterion testable.
 - Use prerequisites to name earlier concepts when relevant.
-- Avoid duplicate or filler concepts.`;
+- Avoid duplicate or filler concepts.
+- Base the plan on the supplied internet research. Cover the important primary-source material instead of producing a generic topic outline.`;
 
 export async function generateCurriculum(input: {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
+  research: LearningResearch;
 }): Promise<CurriculumResponse> {
   const result = await completeCodexJson<CurriculumResponse>(
     CURRICULUM_SYSTEM,
-    `Learning goal: ${input.goal}\nCurrent experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}`
+    `Learning goal: ${input.goal}\nCurrent experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}\n\nInternet research (retrieved from primary sources):\n${JSON.stringify(input.research)}`
   );
   const validNode = (node: CurriculumNodeInput): boolean =>
     Boolean(
@@ -56,8 +59,9 @@ Completion criterion: ${node.completionCriteria}
 Known prerequisite progress: ${prerequisiteProgress || 'No recorded prerequisite evidence'}
 Recorded misconceptions: ${node.misconceptions.join('; ') || 'None yet'}
 Learner notes: ${note || 'None'}
+Source-grounded plan research: ${plan.researchContext || 'No external sources were recorded for this plan.'}
 
-Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
+Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
 export async function streamTutorReply(input: {

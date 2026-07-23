@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { isValidElement, useEffect, useRef, useState, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -43,9 +43,28 @@ function Mermaid({ code }: { code: string }) {
   return svg ? <div dangerouslySetInnerHTML={{ __html: svg }} /> : <>{code}</>;
 }
 
+function nodeText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (isValidElement<{ children?: ReactNode }>(node)) return nodeText(node.props.children);
+  return '';
+}
+
+function CodeBlock({ children, ...props }: React.ComponentProps<'pre'>) {
+  const [copied, setCopied] = useState(false);
+  const code = nodeText(children).replace(/\n$/, '');
+  async function copy() {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+  return <div className="group/code relative"><button type="button" onClick={() => void copy()} className="absolute right-2 top-2 z-10 rounded-md border bg-background/90 px-2 py-1 text-xs font-medium text-muted-foreground opacity-100 shadow-sm backdrop-blur transition hover:text-foreground sm:opacity-0 sm:focus:opacity-100 sm:group-hover/code:opacity-100" aria-label="Copy code">{copied ? 'Copied' : 'Copy'}</button><pre {...props}>{children}</pre></div>;
+}
+
 // Module scope on purpose: a fresh object here is a fresh component type on every
 // render, which remounts Mermaid and flashes the diagram.
 const MARKDOWN_COMPONENTS = {
+  pre: CodeBlock,
   code: ({ className, children, ...props }: React.ComponentProps<'code'>) =>
     className === 'language-mermaid' ? (
       <Mermaid code={String(children).trimEnd()} />

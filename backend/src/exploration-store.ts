@@ -21,7 +21,6 @@ export type ExplorationThread = {
   title: string;
   intent: ThreadIntent;
   contextSummary: string;
-  branchSummary: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -50,7 +49,6 @@ function mapThread(row: Record<string, SqlValue>): ExplorationThread {
     title: String(row.title),
     intent: String(row.intent) as ThreadIntent,
     contextSummary: String(row.context_summary ?? ''),
-    branchSummary: String(row.branch_summary ?? ''),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -95,6 +93,24 @@ export function getSpace(spaceId: number): ExplorationSpace | null {
   return row ? mapSpace(row) : null;
 }
 
+export function deleteSpace(spaceId: number): boolean {
+  const db = getDb();
+  if (!getSpace(spaceId)) return false;
+  db.run('BEGIN');
+  try {
+    db.run('DELETE FROM message_verifications WHERE message_id IN (SELECT exploration_messages.id FROM exploration_messages JOIN exploration_threads ON exploration_threads.id = exploration_messages.thread_id WHERE exploration_threads.space_id = ?)', [spaceId]);
+    db.run('DELETE FROM exploration_messages WHERE thread_id IN (SELECT id FROM exploration_threads WHERE space_id = ?)', [spaceId]);
+    db.run('DELETE FROM exploration_threads WHERE space_id = ?', [spaceId]);
+    db.run('DELETE FROM exploration_spaces WHERE id = ?', [spaceId]);
+    db.run('COMMIT');
+    saveDb();
+    return true;
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
+}
+
 export function getSpaceDetail(spaceId: number) {
   const space = getSpace(spaceId);
   if (!space) return null;
@@ -113,13 +129,10 @@ export function getThreadDetail(threadId: number) {
   const space = getSpace(thread.spaceId)!;
   const messages = rows('SELECT * FROM exploration_messages WHERE thread_id = ? ORDER BY id', [threadId]).map(mapMessage);
   const parent = thread.parentThreadId ? getThread(thread.parentThreadId) : null;
-  const sourceMessage = thread.sourceMessageId
-    ? rows('SELECT * FROM exploration_messages WHERE id = ?', [thread.sourceMessageId]).map(mapMessage)[0] ?? null
-    : null;
   const verifications = messages.length
     ? rows(`SELECT * FROM message_verifications WHERE message_id IN (${messages.map(() => '?').join(',')})`, messages.map((message) => message.id)).map(mapVerification)
     : [];
-  return { space, thread, parent, sourceMessage, messages, verifications };
+  return { space, thread, parent, messages, verifications };
 }
 
 export function getExplorationMessage(messageId: number): ExplorationMessage | null {

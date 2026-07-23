@@ -4,6 +4,7 @@ import {
   addExplorationMessage,
   createBranch,
   createSpace,
+  deleteSpace,
   failMessageVerification,
   finishMessageVerification,
   getExplorationMessage,
@@ -44,6 +45,15 @@ export function getExplorationSpace(req: Request, res: Response): void {
     return;
   }
   res.json(result);
+}
+
+export function deleteExplorationSpace(req: Request, res: Response): void {
+  const spaceId = id(req.params.id);
+  if (!spaceId || !deleteSpace(spaceId)) {
+    res.status(404).json({ error: 'Exploration space not found' });
+    return;
+  }
+  res.status(204).send();
 }
 
 export function getExplorationThread(req: Request, res: Response): void {

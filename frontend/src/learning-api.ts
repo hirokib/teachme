@@ -6,7 +6,7 @@ export type LearningPlan = {
   goal: string;
   currentExperience: string;
   targetOutcome: string;
-  status: string;
+  researchContext: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -24,11 +24,8 @@ export type LearningNode = {
   orderIndex: number;
   status: string;
   masteryScore: number;
-  confidence: number;
   attemptCount: number;
   misconceptions: string[];
-  lastReviewedAt: string | null;
-  nextReviewAt: string | null;
 };
 
 export type PlanDetail = { plan: LearningPlan; nodes: LearningNode[] };
@@ -38,7 +35,6 @@ export type StudyDetail = {
   node: LearningNode;
   allNodes: LearningNode[];
   messages: { id: number; role: 'user' | 'assistant'; content: string; createdAt: string }[];
-  assessments: Assessment[];
   note: string;
 };
 
@@ -51,7 +47,6 @@ export type Assessment = {
   gaps: string[];
   nextAction: string;
   feedback: string;
-  confidence: number;
   masteryScore?: number;
 };
 
@@ -125,7 +120,7 @@ export async function generateQuestion(nodeId: number): Promise<string> {
 
 export async function assessAnswer(
   nodeId: number,
-  input: { question: string; response: string; confidence: number }
+  input: { question: string; response: string }
 ): Promise<Assessment & { progress: LearningNode }> {
   return json(
     await fetch(`${API_URL}/api/nodes/${nodeId}/assessments`, {
