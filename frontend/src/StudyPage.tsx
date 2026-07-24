@@ -183,7 +183,7 @@ export function StudyPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
         <section className="pop space-y-4 rounded-2xl bg-card p-5">
-          <div><h2 className="flex items-center gap-2 font-semibold"><span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">✦</span>{awaitingInitialRecall ? 'Closed-note recall' : 'Tutor'}</h2><p className="text-sm text-muted-foreground">{awaitingInitialRecall ? 'Retrieval comes before explanation.' : 'One idea at a time, adapted to your progress.'}</p></div>
+          <div><h2 className="flex items-center gap-2 font-semibold"><span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">✦</span>{awaitingInitialRecall ? 'Closed-note recall' : 'Tutor'}</h2><p className="text-sm text-muted-foreground">{awaitingInitialRecall ? 'Retrieval comes before explanation.' : 'One idea at a time, adapted to your progress. For a specific problem, share your attempt before asking for its solution.'}</p></div>
           <div className="min-h-80 space-y-4 rounded-xl bg-muted/50 p-4">
             {awaitingInitialRecall && (
               <form
@@ -218,7 +218,7 @@ export function StudyPage() {
           </div>
           {!awaitingInitialRecall && (
             <>
-              <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex items-end gap-2"><textarea rows={1} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendTutor(message); } }} placeholder="Ask for an example, go deeper, or explain your confusion…" className="max-h-40 min-h-10 flex-1 resize-y rounded-2xl border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
+              <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex items-end gap-2"><textarea rows={1} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendTutor(message); } }} placeholder="Ask a question, share an attempt, or explain your confusion…" className="max-h-40 min-h-10 flex-1 resize-y rounded-2xl border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
               <div className="flex flex-wrap gap-2">{['Continue', 'Explain simply', 'Show an example'].map((label) => <Button key={label} size="sm" variant="outline" className="pop rounded-lg" disabled={busy} onClick={() => void sendTutor(label)}>{label}</Button>)}</div>
             </>
           )}

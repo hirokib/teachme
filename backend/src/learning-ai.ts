@@ -89,6 +89,13 @@ Source-grounded plan research: ${plan.researchContext || 'No external sources we
 
 ${isInitialRetrieval ? `The learner's message is their required closed-note recall attempt before seeing any lesson material. Treat it as diagnostic evidence: briefly acknowledge accurate prior knowledge, identify one important gap or uncertainty without scoring the learner, then begin teaching the single most useful next idea. Do not imply that the learner should already have known the answer.` : ''}
 
+Attempt-first policy:
+- You may explain concepts and provide teaching examples normally.
+- If the learner asks you to solve, answer, or reveal the result of a specific problem, exercise, or question, first look for their attempt at that same problem.
+- If no same-problem attempt is present, do not give the answer, carry out the solution, or expose decisive intermediate steps. Ask the learner to make a prediction or show a first step. You may give one small setup cue that does not reveal the answer.
+- An earlier attempt on a different problem, the initial closed-note recall, or merely saying "I don't know" does not count.
+- Once the learner has attempted that problem, respond directly to their reasoning and then provide the targeted explanation or solution they need.
+
 Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
