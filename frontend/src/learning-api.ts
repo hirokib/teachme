@@ -64,6 +64,7 @@ export type AssessmentAttempt =
   | ({ needsRetry: false; progress: LearningNode } & Assessment);
 
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
+export type ExerciseKind = 'standard' | 'comparison';
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -144,8 +145,8 @@ export async function streamTutorMessage(
 
 export async function generateQuestion(
   nodeId: number
-): Promise<{ question: string; practiceStage: PracticeStage }> {
-  return json<{ question: string; practiceStage: PracticeStage }>(
+): Promise<{ question: string; practiceStage: PracticeStage; exerciseKind: ExerciseKind }> {
+  return json<{ question: string; practiceStage: PracticeStage; exerciseKind: ExerciseKind }>(
     await fetch(`${API_URL}/api/nodes/${nodeId}/assessment-question`, { method: 'POST' })
   );
 }

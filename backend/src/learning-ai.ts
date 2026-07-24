@@ -5,6 +5,7 @@ import type { LearningResearch } from './learning-research.js';
 type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
 export type DiagnosticAnswer = { question: string; answer: string };
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
+export type ExerciseKind = 'standard' | 'comparison';
 
 function practiceStage(node: LearningNode): PracticeStage {
   if (node.attemptCount === 0 || node.masteryScore < 50) return 'supported';
@@ -162,8 +163,12 @@ export async function streamTutorReply(input: {
 
 export async function generateAssessmentQuestion(
   node: LearningNode
-): Promise<{ question: string; practiceStage: PracticeStage }> {
+): Promise<{ question: string; practiceStage: PracticeStage; exerciseKind: ExerciseKind }> {
   const stage = practiceStage(node);
+  const exerciseKind: ExerciseKind =
+    node.misconceptions.length > 0 || (node.attemptCount > 0 && node.attemptCount % 2 === 1)
+      ? 'comparison'
+      : 'standard';
   const result = await completeCodexJson<{ question: string }>(
     `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. If a recorded mistaken rule exists, target exactly one with a new situation that reveals whether the learner still uses it; do not quote or name the mistaken rule in the question. Otherwise, test the completion criterion.
 
@@ -173,10 +178,12 @@ Match the requested practice stage:
 - independent: use a multi-step or mixed problem with no setup cues.
 - transfer: use an unfamiliar context that requires choosing and justifying which idea applies.
 
+Match the requested exercise kind. For comparison, present two closely related cases that differ in one conceptually important way. Require the learner to classify, predict, or apply the idea to both and explain which difference changes the result. Do not state the decisive principle in the question. For standard, ask one focused retrieval or application question.
+
 Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.`,
-    `Practice stage: ${stage}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
+    `Practice stage: ${stage}\nExercise kind: ${exerciseKind}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
   );
-  return { question: result.question, practiceStage: stage };
+  return { question: result.question, practiceStage: stage, exerciseKind };
 }
 
 export type AssessmentResult = {
