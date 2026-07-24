@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { getPlan, type PlanDetail } from './learning-api';
+import { MathText, Prose } from './Prose';
 
 type PlanResearch = { summary?: string; sources?: { title: string; url: string; relevance?: string }[] };
 
@@ -31,8 +32,8 @@ export function PlanPage() {
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
         <Link to="/" className="text-sm text-muted-foreground hover:underline">← All plans</Link>
-        <h1 className="mt-4 text-3xl font-semibold">{detail.plan.title}</h1>
-        <p className="mt-2 text-muted-foreground">{detail.plan.targetOutcome}</p>
+        <h1 className="mt-4 text-3xl font-semibold"><MathText>{detail.plan.title}</MathText></h1>
+        <p className="mt-2 text-muted-foreground"><MathText>{detail.plan.targetOutcome}</MathText></p>
         <div className="mt-5 flex items-center gap-3 text-sm">
           <div className="h-3 flex-1 overflow-hidden rounded-full border-2 border-foreground bg-muted"><div className="h-full rounded-full bg-gradient-to-r from-primary to-success transition-[width] duration-500" style={{ width: `${detail.nodes.length ? (completed / detail.nodes.length) * 100 : 0}%` }} /></div>
           <span>{completed}/{detail.nodes.length} mastered</span>
@@ -42,12 +43,12 @@ export function PlanPage() {
       {research?.sources?.length ? (
         <details className="pop rounded-2xl bg-card p-5">
           <summary className="cursor-pointer font-semibold">Sources used to create this plan ({research.sources.length})</summary>
-          {research.summary && <p className="mt-3 text-sm text-muted-foreground">{research.summary}</p>}
+          {research.summary && <Prose className="mt-3 text-sm text-muted-foreground">{research.summary}</Prose>}
           <ul className="mt-4 grid gap-3">
             {research.sources.map((source) => (
               <li key={source.url} className="text-sm">
                 <a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">{source.title} ↗</a>
-                {source.relevance && <p className="mt-1 text-muted-foreground">{source.relevance}</p>}
+                {source.relevance && <Prose className="mt-1 text-muted-foreground">{source.relevance}</Prose>}
               </li>
             ))}
           </ul>
@@ -60,8 +61,8 @@ export function PlanPage() {
             <Link to="/nodes/$nodeId" params={{ nodeId: String(node.id) }} className={`pop grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl bg-card p-4 ${node.status === 'completed' ? 'pop-success' : node.attemptCount ? 'pop-warning' : ''}`}>
               <span className={`flex size-8 items-center justify-center rounded-full text-sm font-medium ${node.status === 'completed' ? 'bg-success text-success-foreground' : node.attemptCount ? 'bg-warning text-warning-foreground' : 'bg-accent text-accent-foreground'}`}>{node.status === 'completed' ? '✓' : index + 1}</span>
               <span>
-                <span className="font-medium">{node.title}</span>
-                <span className="mt-1 block text-sm text-muted-foreground">{node.learningObjective}</span>
+                <MathText className="font-medium">{node.title}</MathText>
+                <MathText className="mt-1 block text-sm text-muted-foreground">{node.learningObjective}</MathText>
               </span>
               <span className="text-right text-sm">
                 <span className={`block font-semibold ${node.masteryScore >= 70 ? 'text-success' : node.masteryScore > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{node.masteryScore}%</span>

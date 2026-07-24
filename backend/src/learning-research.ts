@@ -47,7 +47,7 @@ export function researchLearningGoal(input: {
 Return ONLY valid JSON in this exact shape:
 {"summary":"a dense source-grounded briefing for a curriculum designer (up to 1800 words)","keyTopics":["specific concept, paper section, experiment, or code subsystem"],"sources":[{"title":"source title","url":"https://...","kind":"paper|repository|documentation|article|other","relevance":"what this source establishes and what should be taught from it"}]}
 
-Include direct canonical URLs. Do not invent sources. Capture disagreements, limitations, prerequisites, implementation architecture, experiments, and reproduction workflows when relevant.
+Include direct canonical URLs. Do not invent sources. Capture disagreements, limitations, prerequisites, implementation architecture, experiments, and reproduction workflows when relevant. In every generated string, format mathematical expressions as LaTeX delimited by $...$ or $$...$$ and escape backslashes correctly for JSON. Never emit bare LaTeX commands.
 
 LEARNING GOAL: ${input.goal}
 LEARNER BACKGROUND: ${input.currentExperience}

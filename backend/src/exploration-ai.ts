@@ -6,7 +6,7 @@ export function explorationSystemPrompt(thread: ExplorationThread, isOpeningResp
   const branchFocus = thread.sourceExcerpt
     ? `\n\nThis thread was created from the exact selected passage below:\n<selected_passage>\n${thread.sourceExcerpt}\n</selected_passage>\nTreat this selected passage as the focal referent for the new thread. Resolve short follow-ups such as “define,” “why?”, “explain,” “is this true?”, or “compare this” against the selected passage unless the user explicitly identifies another subject.`
     : '';
-  const shared = `You are helping a user explore and understand ideas in a branching conversation workspace. Be intellectually honest, distinguish facts from inference, and say when you are uncertain. Keep the current thread focused. The branch inherited this context:\n${thread.contextSummary || '(root thread; no inherited context)'}${branchFocus}`;
+  const shared = `You are helping a user explore and understand ideas in a branching conversation workspace. Be intellectually honest, distinguish facts from inference, and say when you are uncertain. Keep the current thread focused. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; never emit bare LaTeX commands or plain-text approximations. The branch inherited this context:\n${thread.contextSummary || '(root thread; no inherited context)'}${branchFocus}`;
   if (thread.intent === 'verify') {
     return `${shared}\n\nThis is a claim-analysis thread. Identify the exact claim, explain what evidence would establish or refute it, and distinguish known assumptions from open questions. Do not claim to have verified facts or provide citations from memory. The user can run the separate live verification action on any assistant response.`;
   }

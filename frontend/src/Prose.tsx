@@ -75,6 +75,11 @@ const MARKDOWN_COMPONENTS = {
     ),
 };
 
+const INLINE_MARKDOWN_COMPONENTS = {
+  ...MARKDOWN_COMPONENTS,
+  p: ({ children }: React.ComponentProps<'p'>) => <>{children}</>,
+};
+
 const MARKDOWN_PLUGINS = [remarkGfm, remarkMath];
 const REHYPE_PLUGINS = [rehypeKatex];
 
@@ -97,5 +102,19 @@ export function Prose({ children, className }: { children: string; className?: s
         {toDollarMath(children)}
       </Markdown>
     </div>
+  );
+}
+
+export function MathText({ children, className }: { children: string; className?: string }) {
+  return (
+    <span className={className}>
+      <Markdown
+        remarkPlugins={MARKDOWN_PLUGINS}
+        rehypePlugins={REHYPE_PLUGINS}
+        components={INLINE_MARKDOWN_COMPONENTS}
+      >
+        {toDollarMath(children)}
+      </Markdown>
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { Prose } from './Prose';
+import { MathText, Prose } from './Prose';
 import {
   assessAnswer,
   generateQuestion,
@@ -170,12 +170,10 @@ export function StudyPage() {
         <Link to="/plans/$planId" params={{ planId: String(study.plan.id) }} className="text-sm text-muted-foreground hover:underline">← {study.plan.title}</Link>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">{study.node.title}</h1>
-            <p className="mt-2 max-w-3xl text-muted-foreground">
-              {awaitingInitialRecall
-                ? 'Start by recalling what you know before viewing the lesson.'
-                : study.node.summary}
-            </p>
+            <h1 className="text-3xl font-semibold"><MathText>{study.node.title}</MathText></h1>
+            {awaitingInitialRecall
+              ? <p className="mt-2 max-w-3xl text-muted-foreground">Start by recalling what you know before viewing the lesson.</p>
+              : <Prose className="mt-2 max-w-3xl text-muted-foreground">{study.node.summary}</Prose>}
           </div>
           <div className={`pop rounded-2xl bg-card px-4 py-3 text-right ${study.node.masteryScore >= 70 ? 'pop-success' : study.node.masteryScore > 0 ? 'pop-warning' : ''}`}><span className={`text-2xl font-semibold ${study.node.masteryScore >= 70 ? 'text-success' : study.node.masteryScore > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{study.node.masteryScore}%</span><span className="block text-xs text-muted-foreground">demonstrated mastery</span></div>
         </div>
@@ -194,7 +192,7 @@ export function StudyPage() {
                 }}
               >
                 <div className="space-y-2">
-                  <p className="font-medium">Before reading anything, what can you recall or infer about {study.node.title}?</p>
+                  <p className="font-medium">Before reading anything, what can you recall or infer about <MathText>{study.node.title}</MathText>?</p>
                   <p className="text-sm text-muted-foreground">Explain it in your own words, include any related ideas you remember, and name what feels uncertain. A rough or incomplete attempt is useful.</p>
                 </div>
                 <textarea
@@ -232,7 +230,7 @@ export function StudyPage() {
             </section>
           ) : (
             <>
-              <section className="pop rounded-2xl bg-accent/40 p-5"><h2 className="font-semibold">Learning target</h2><p className="mt-2 text-sm text-muted-foreground">{study.node.learningObjective}</p><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Evidence of completion</h3><p className="mt-2 text-sm">{study.node.completionCriteria}</p></section>
+              <section className="pop rounded-2xl bg-accent/40 p-5"><h2 className="font-semibold">Learning target</h2><Prose className="mt-2 text-sm text-muted-foreground">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Evidence of completion</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose></section>
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
@@ -243,7 +241,7 @@ export function StudyPage() {
                         {RESULT_LABELS[initialResult ?? 'not_yet']}
                       </span>
                       <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-warning">Minimal hint</p>
-                      <p className="mt-1 text-sm">{assessmentHint}</p>
+                      <Prose className="mt-1 text-sm">{assessmentHint}</Prose>
                       <p className="mt-2 text-xs text-muted-foreground">Revise your answer below before seeing the explanation.</p>
                     </div>
                   )}
@@ -251,12 +249,12 @@ export function StudyPage() {
                   <Button type="submit" className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : assessmentHint ? 'Submit retry' : 'Check my understanding'}</Button>
                   {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
                 </form>}
-                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{RESULT_LABELS[assessment.result] || assessment.result}</span><p className="text-sm">{assessment.feedback}</p>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}>{item}</li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}>{item}</li>)}</ul></div>}<Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button></div>}
+                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{RESULT_LABELS[assessment.result] || assessment.result}</span><Prose className="text-sm">{assessment.feedback}</Prose>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}<Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button></div>}
               </section>
 
               <section className="pop rounded-2xl bg-card p-5"><h2 className="font-semibold">Your notes</h2><textarea value={note} onChange={(event) => setNote(event.target.value)} onBlur={() => void updateNote(id, note)} placeholder="Capture an explanation in your own words…" className="mt-3 min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" /><p className="mt-1 text-xs text-muted-foreground">Saved when you leave the field. The tutor can use these notes.</p></section>
 
-              {study.node.misconceptions.length > 0 && <section className="pop pop-warning rounded-2xl bg-warning/10 p-5"><h2 className="font-semibold">Active gaps</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{study.node.misconceptions.map((item) => <li key={item}>{item}</li>)}</ul></section>}
+              {study.node.misconceptions.length > 0 && <section className="pop pop-warning rounded-2xl bg-warning/10 p-5"><h2 className="font-semibold">Mistaken rules to revisit</h2><p className="mt-1 text-xs text-muted-foreground">Future checks will test these in new situations.</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{study.node.misconceptions.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></section>}
             </>
           )}
         </aside>

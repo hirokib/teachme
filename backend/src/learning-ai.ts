@@ -12,7 +12,8 @@ export async function generatePrerequisiteDiagnostic(input: {
 }): Promise<{ questions: string[] }> {
   const result = await completeCodexJson<{ questions: string[] }>(
     `You design short prerequisite diagnostics. Return only JSON: {"questions":["..."]}.
-Write exactly three open-response questions that reveal whether the learner has the most important prerequisite knowledge for the stated goal. Questions should require brief reasoning or explanation, not trivia, self-rating, or multiple choice. Do not teach or reveal answers.`,
+Write exactly three open-response questions that reveal whether the learner has the most important prerequisite knowledge for the stated goal. Questions should require brief reasoning or explanation, not trivia, self-rating, or multiple choice. Do not teach or reveal answers.
+Write every mathematical expression as LaTeX delimited by $...$ or $$...$$. Because the output is JSON, escape LaTeX backslashes correctly. Never emit bare LaTeX commands or plain-text approximations.`,
     `Learning goal: ${input.goal}\nReported experience: ${input.currentExperience}\nDesired outcome: ${input.targetOutcome}`
   );
   const questions = Array.isArray(result.questions)
@@ -32,6 +33,7 @@ Rules:
 - Make every learning objective observable and every completion criterion testable.
 - Use prerequisites to name earlier concepts when relevant.
 - Avoid duplicate or filler concepts.
+- In every generated field, format mathematical expressions as LaTeX delimited by $...$ or $$...$$ and escape backslashes correctly for JSON. Never emit bare LaTeX commands.
 - Base the plan on the supplied internet research. Cover the important primary-source material instead of producing a generic topic outline.`;
 
 export async function generateCurriculum(input: {
@@ -96,7 +98,7 @@ Attempt-first policy:
 - An earlier attempt on a different problem, the initial closed-note recall, or merely saying "I don't know" does not count.
 - Once the learner has attempted that problem, respond directly to their reasoning and then provide the targeted explanation or solution they need.
 
-Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
+Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; never emit bare LaTeX commands or plain-text approximations. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
 export async function streamTutorReply(input: {
@@ -148,8 +150,8 @@ export async function streamTutorReply(input: {
 
 export async function generateAssessmentQuestion(node: LearningNode): Promise<{ question: string }> {
   return completeCodexJson<{ question: string }>(
-    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. Format every mathematical expression as LaTeX using $...$ for inline math or $$...$$ for display math. Never use plain-text approximations such as ^T for transpose.`,
-    `Concept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nPrior gaps: ${node.misconceptions.join('; ') || 'None'}`
+    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. If a recorded mistaken rule exists, target exactly one with a new situation that reveals whether the learner still uses it; do not quote or name the mistaken rule in the question. Otherwise, test the completion criterion. Format every mathematical expression as LaTeX using $...$ for inline math or $$...$$ for display math. Never use plain-text approximations such as ^T for transpose.`,
+    `Concept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
   );
 }
 
@@ -160,6 +162,8 @@ export type AssessmentResult = {
   nextAction: 'continue' | 'simpler_explanation' | 'analogy' | 'worked_example' | 'revisit_prerequisite' | 'another_question' | 'complete';
   feedback: string;
   masteryScore: number;
+  mistakenRules: string[];
+  resolvedMisconceptions: string[];
 };
 
 export type AttemptAssessmentResult = AssessmentResult & {
@@ -174,12 +178,16 @@ export async function assessResponse(
 ): Promise<AttemptAssessmentResult> {
   const assessment = await completeCodexJson<AttemptAssessmentResult>(
     `You assess learning evidence conservatively. Return only JSON with:
-{"result":"not_yet|partial|mastered","strengths":["..."],"gaps":["..."],"nextAction":"continue|simpler_explanation|analogy|worked_example|revisit_prerequisite|another_question|complete","feedback":"...","masteryScore":0,"hint":"..."}
+{"result":"not_yet|partial|mastered","strengths":["..."],"gaps":["..."],"mistakenRules":["..."],"resolvedMisconceptions":["..."],"nextAction":"continue|simpler_explanation|analogy|worked_example|revisit_prerequisite|another_question|complete","feedback":"...","masteryScore":0,"hint":"..."}
 Use a 0-100 mastery score. A fluent but vague answer is not mastery. Feedback must be concise, specific, encouraging, and must correct the most important gap.
+Record a mistakenRules entry only when the learner's response demonstrates a reusable incorrect rule, not for omissions, uncertainty, arithmetic slips, or generic gaps. Write each as a concise first-person belief, for example "I treat every function with a constant term as linear."
+For resolvedMisconceptions, copy an entry verbatim from the recorded mistaken rules only when this response provides clear evidence that the learner no longer applies it. Otherwise return an empty array.
+In every generated string, format mathematical expressions as LaTeX delimited by $...$ or $$...$$ and escape backslashes correctly for JSON. Never emit bare LaTeX commands.
 The hint must be one short question or cue that points toward the most important missing idea without revealing the answer. Never put the answer or a full explanation in the hint.`,
     `Concept: ${node.title}
 Objective: ${node.learningObjective}
 Completion criterion: ${node.completionCriteria}
+Recorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}
 Question: ${question}
 ${priorAttempt ? `First attempt: ${priorAttempt.response}\nHint provided: ${priorAttempt.hint}\nRetry response` : 'Learner response'}: ${response}`
   );
@@ -200,6 +208,12 @@ ${priorAttempt ? `First attempt: ${priorAttempt.response}\nHint provided: ${prio
     ...assessment,
     strengths: Array.isArray(assessment.strengths) ? assessment.strengths.filter((item) => typeof item === 'string') : [],
     gaps: Array.isArray(assessment.gaps) ? assessment.gaps.filter((item) => typeof item === 'string') : [],
+    mistakenRules: Array.isArray(assessment.mistakenRules)
+      ? assessment.mistakenRules.filter((item) => typeof item === 'string' && item.trim())
+      : [],
+    resolvedMisconceptions: Array.isArray(assessment.resolvedMisconceptions)
+      ? assessment.resolvedMisconceptions.filter((item) => typeof item === 'string' && item.trim())
+      : [],
     feedback: typeof assessment.feedback === 'string' ? assessment.feedback : '',
     hint:
       typeof assessment.hint === 'string' && assessment.hint.trim()

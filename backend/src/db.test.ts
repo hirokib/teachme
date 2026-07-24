@@ -111,9 +111,18 @@ async function main() {
   });
   const nodeId = created.nodes[0]!.id;
   saveNote(nodeId, 'Assertions encode expectations.');
+  const mistakenRule = 'I think assertions change the value they inspect.';
+  saveAssessment(nodeId, {
+    result: 'partial',
+    gaps: ['Confuses observation with mutation.'],
+    mistakenRules: [mistakenRule],
+    masteryScore: 45,
+  });
+  assert.deepStrictEqual(getNodeStudy(nodeId)?.node.misconceptions, [mistakenRule]);
   saveAssessment(nodeId, {
     result: 'mastered',
     gaps: [],
+    resolvedMisconceptions: [mistakenRule],
     masteryScore: 90,
   });
   const study = getNodeStudy(nodeId);
@@ -121,6 +130,7 @@ async function main() {
   assert.match(study?.plan.diagnosticContext ?? '', /expected result/);
   assert.strictEqual(study?.node.masteryScore, 90);
   assert.strictEqual(study?.node.status, 'completed');
+  assert.deepStrictEqual(study?.node.misconceptions, []);
 
   const {
     addExplorationMessage,

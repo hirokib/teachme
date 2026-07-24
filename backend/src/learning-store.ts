@@ -211,6 +211,8 @@ export function saveNote(nodeId: number, content: string): void {
 export type AssessmentInput = {
   result: 'not_yet' | 'partial' | 'mastered';
   gaps: string[];
+  mistakenRules?: string[];
+  resolvedMisconceptions?: string[];
   masteryScore: number;
 };
 
@@ -218,7 +220,15 @@ export function saveAssessment(nodeId: number, input: AssessmentInput): void {
   const db = getDb();
   const current = getNode(nodeId);
   if (!current) throw new Error('Node not found');
-  const misconceptions = Array.from(new Set([...current.misconceptions, ...input.gaps])).slice(-12);
+  const resolved = new Set(
+    (input.resolvedMisconceptions ?? []).map((item) => item.trim().toLocaleLowerCase())
+  );
+  const retained = current.misconceptions.filter(
+    (item) => !resolved.has(item.trim().toLocaleLowerCase())
+  );
+  const misconceptions = Array.from(
+    new Set([...retained, ...(input.mistakenRules ?? []).map((item) => item.trim()).filter(Boolean)])
+  ).slice(-12);
   const status = input.result === 'mastered' ? 'completed' : 'in_progress';
 
   db.run('BEGIN');

@@ -227,6 +227,8 @@ export async function postAssessment(req: Request, res: Response): Promise<void>
   saveAssessment(node.id, {
     result: assessment.result,
     gaps: assessment.gaps,
+    mistakenRules: assessment.mistakenRules,
+    resolvedMisconceptions: assessment.resolvedMisconceptions,
     masteryScore: assessment.masteryScore,
   });
   res.json({ needsRetry: false, ...assessment, progress: getNode(node.id) });

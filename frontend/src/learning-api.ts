@@ -47,6 +47,8 @@ export type Assessment = {
   result: 'not_yet' | 'partial' | 'mastered';
   strengths: string[];
   gaps: string[];
+  mistakenRules: string[];
+  resolvedMisconceptions: string[];
   nextAction: string;
   feedback: string;
   masteryScore?: number;

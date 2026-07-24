@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
+import { MathText } from './Prose';
 import {
   createLearningPlan,
   generatePlanDiagnostic,
@@ -122,7 +123,7 @@ export function LearningHome() {
             </div>
             {diagnosticQuestions.map((question, index) => (
               <label key={question} className="grid gap-2 text-sm font-medium">
-                <span>{index + 1}. {question}</span>
+                <span>{index + 1}. <MathText>{question}</MathText></span>
                 <textarea
                   required
                   maxLength={5000}
@@ -172,8 +173,8 @@ export function LearningHome() {
           <div className="grid gap-3 md:grid-cols-2">
             {plans.map((plan) => (
               <Link key={plan.id} to="/plans/$planId" params={{ planId: String(plan.id) }} className="pop rounded-2xl bg-card p-5">
-                <h3 className="font-semibold">{plan.title}</h3>
-                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{plan.goal}</p>
+                <h3 className="font-semibold"><MathText>{plan.title}</MathText></h3>
+                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground"><MathText>{plan.goal}</MathText></p>
                 <p className="mt-4 text-xs font-medium text-primary">Open learning plan →</p>
               </Link>
             ))}
