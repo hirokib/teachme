@@ -64,7 +64,7 @@ export type AssessmentAttempt =
   | ({ needsRetry: false; progress: LearningNode } & Assessment);
 
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
-export type ExerciseKind = 'standard' | 'comparison';
+export type ExerciseKind = 'standard' | 'comparison' | 'prediction';
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {

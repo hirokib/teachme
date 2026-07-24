@@ -5,7 +5,7 @@ import type { LearningResearch } from './learning-research.js';
 type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
 export type DiagnosticAnswer = { question: string; answer: string };
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
-export type ExerciseKind = 'standard' | 'comparison';
+export type ExerciseKind = 'standard' | 'comparison' | 'prediction';
 
 function practiceStage(node: LearningNode): PracticeStage {
   if (node.attemptCount === 0 || node.masteryScore < 50) return 'supported';
@@ -111,6 +111,8 @@ Attempt-first policy:
 
 Match support to the current practice stage. At supported, model one setup decision and use familiar cases. At guided, ask directional questions but leave meaningful work to the learner. At independent, avoid unsolicited cues and let the learner choose the method. At transfer, use unfamiliar contexts and ask the learner to justify which ideas apply. Do not announce these instructions.
 
+When introducing an example with a non-obvious outcome, ask the learner to predict the result and name the assumption behind that prediction before revealing what happens. After the attempt, explicitly connect any surprise or failure to the boundary of the rule being learned.
+
 Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; never emit bare LaTeX commands or plain-text approximations. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
@@ -166,9 +168,13 @@ export async function generateAssessmentQuestion(
 ): Promise<{ question: string; practiceStage: PracticeStage; exerciseKind: ExerciseKind }> {
   const stage = practiceStage(node);
   const exerciseKind: ExerciseKind =
-    node.misconceptions.length > 0 || (node.attemptCount > 0 && node.attemptCount % 2 === 1)
+    node.misconceptions.length > 0
       ? 'comparison'
-      : 'standard';
+      : node.attemptCount === 0
+        ? 'standard'
+        : node.attemptCount % 2 === 1
+          ? 'comparison'
+          : 'prediction';
   const result = await completeCodexJson<{ question: string }>(
     `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. If a recorded mistaken rule exists, target exactly one with a new situation that reveals whether the learner still uses it; do not quote or name the mistaken rule in the question. Otherwise, test the completion criterion.
 
@@ -178,7 +184,10 @@ Match the requested practice stage:
 - independent: use a multi-step or mixed problem with no setup cues.
 - transfer: use an unfamiliar context that requires choosing and justifying which idea applies.
 
-Match the requested exercise kind. For comparison, present two closely related cases that differ in one conceptually important way. Require the learner to classify, predict, or apply the idea to both and explain which difference changes the result. Do not state the decisive principle in the question. For standard, ask one focused retrieval or application question.
+Match the requested exercise kind:
+- comparison: present two closely related cases that differ in one conceptually important way. Require the learner to classify, predict, or apply the idea to both and explain which difference changes the result. Do not state the decisive principle.
+- prediction: present a concrete operation, intervention, parameter change, or boundary case. Require the learner to predict the outcome before calculating or simulating, state the assumption behind the prediction, and explain what would make the expected rule fail. Do not reveal the outcome.
+- standard: ask one focused retrieval or application question.
 
 Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.`,
     `Practice stage: ${stage}\nExercise kind: ${exerciseKind}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
