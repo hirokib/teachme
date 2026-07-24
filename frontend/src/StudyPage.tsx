@@ -11,6 +11,7 @@ import {
   type Assessment,
   type ExerciseKind,
   type PracticeStage,
+  type RepresentationFocus,
   type StudyDetail,
 } from './learning-api';
 
@@ -52,6 +53,13 @@ const PRACTICE_STAGE_HELP: Record<PracticeStage, string> = {
   transfer: 'Apply the idea in an unfamiliar situation.',
 };
 
+const REPRESENTATION_LABELS: Record<RepresentationFocus, string> = {
+  verbal: 'Verbal representation',
+  concrete: 'Concrete representation',
+  visual: 'Visual representation',
+  symbolic: 'Symbolic representation',
+};
+
 export function StudyPage() {
   const { nodeId } = useParams({ strict: false });
   const id = Number(nodeId);
@@ -63,6 +71,7 @@ export function StudyPage() {
   const [question, setQuestion] = useState('');
   const [practiceStage, setPracticeStage] = useState<PracticeStage | null>(null);
   const [exerciseKind, setExerciseKind] = useState<ExerciseKind | null>(null);
+  const [representationFocus, setRepresentationFocus] = useState<RepresentationFocus | null>(null);
   const [answer, setAnswer] = useState('');
   const [initialAnswer, setInitialAnswer] = useState('');
   const [assessmentHint, setAssessmentHint] = useState('');
@@ -72,6 +81,7 @@ export function StudyPage() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const activeResponse = useRef<AbortController | null>(null);
+  const tutorPanel = useRef<HTMLElement | null>(null);
   useEffect(() => () => activeResponse.current?.abort(), []);
 
   async function load() {
@@ -114,6 +124,7 @@ export function StudyPage() {
 
   async function newQuestion() {
     setChecking(true);
+    setQuestion('');
     setAssessment(null);
     setAnswer('');
     setInitialAnswer('');
@@ -121,12 +132,14 @@ export function StudyPage() {
     setInitialResult(null);
     setPracticeStage(null);
     setExerciseKind(null);
+    setRepresentationFocus(null);
     setError('');
     try {
       const generated = await generateQuestion(id);
       setQuestion(generated.question);
       setPracticeStage(generated.practiceStage);
       setExerciseKind(generated.exerciseKind);
+      setRepresentationFocus(generated.representationFocus);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -180,6 +193,7 @@ export function StudyPage() {
       worked_example: 'Walk me through a worked example focused on my gap.',
       revisit_prerequisite: 'Help me revisit the prerequisite I am missing.',
     };
+    tutorPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     await sendTutor(prompts[assessment.nextAction] || 'Help me address the gap from my assessment.');
   }
 
@@ -203,7 +217,7 @@ export function StudyPage() {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
-        <section className="pop space-y-4 rounded-2xl bg-card p-5">
+        <section ref={tutorPanel} className="pop scroll-mt-4 space-y-4 rounded-2xl bg-card p-5">
           <div><h2 className="flex items-center gap-2 font-semibold"><span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">✦</span>{awaitingInitialRecall ? 'Closed-note recall' : 'Tutor'}</h2><p className="text-sm text-muted-foreground">{awaitingInitialRecall ? 'Retrieval comes before explanation.' : 'One idea at a time, adapted to your progress. For a specific problem, share your attempt before asking for its solution.'}</p></div>
           <div className="min-h-80 space-y-4 rounded-xl bg-muted/50 p-4">
             {awaitingInitialRecall && (
@@ -240,12 +254,12 @@ export function StudyPage() {
           {!awaitingInitialRecall && (
             <>
               <form onSubmit={(event) => { event.preventDefault(); void sendTutor(message); }} className="flex items-end gap-2"><textarea rows={1} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendTutor(message); } }} placeholder="Ask a question, share an attempt, or explain your confusion…" className="max-h-40 min-h-10 flex-1 resize-y rounded-2xl border bg-background px-4 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />{busy ? <Button type="button" variant="outline" className="rounded-xl" onClick={stopResponse}><span className="size-2.5 rounded-sm bg-current"/>Stop</Button> : <Button type="submit" className="pop pop-ink rounded-xl">Send</Button>}</form>
-              <div className="flex flex-wrap gap-2">{['Continue', 'Explain simply', 'Show an example', 'Compare two cases', 'Make me predict first'].map((label) => <Button key={label} size="sm" variant="outline" className="pop rounded-lg" disabled={busy} onClick={() => void sendTutor(label)}>{label}</Button>)}</div>
+              <div className="flex flex-wrap gap-2">{['Continue', 'Explain simply', 'Show an example', 'Compare two cases', 'Make me predict first', 'Use another representation'].map((label) => <Button key={label} size="sm" variant="outline" className="pop rounded-lg" disabled={busy} onClick={() => void sendTutor(label)}>{label}</Button>)}</div>
             </>
           )}
         </section>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           {awaitingInitialRecall ? (
             <section className="pop rounded-2xl bg-accent/40 p-5">
               <h2 className="font-semibold">Lesson materials hidden</h2>
@@ -257,7 +271,7 @@ export function StudyPage() {
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
-                  {practiceStage && <div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{PRACTICE_STAGE_LABELS[practiceStage]}</p>{exerciseKind === 'comparison' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Comparison exercise</span>}{exerciseKind === 'prediction' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Prediction exercise</span>}</div><p className="mt-1 text-xs text-muted-foreground">{exerciseKind === 'comparison' ? 'Compare both cases and explain the difference that matters.' : exerciseKind === 'prediction' ? 'Predict before calculating, state your assumption, and identify when the rule could fail.' : PRACTICE_STAGE_HELP[practiceStage]}</p></div>}
+                  {practiceStage && <div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{PRACTICE_STAGE_LABELS[practiceStage]}</p>{representationFocus && <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{REPRESENTATION_LABELS[representationFocus]}</span>}{exerciseKind === 'comparison' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Comparison exercise</span>}{exerciseKind === 'prediction' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Prediction exercise</span>}</div><p className="mt-1 text-xs text-muted-foreground">{exerciseKind === 'comparison' ? 'Compare both cases and explain the difference that matters.' : exerciseKind === 'prediction' ? 'Predict before calculating, state your assumption, and identify when the rule could fail.' : PRACTICE_STAGE_HELP[practiceStage]}</p></div>}
                   <Prose className="text-sm font-medium">{question}</Prose>
                   {assessmentHint && (
                     <div className="rounded-xl bg-warning/10 p-3">
@@ -273,7 +287,7 @@ export function StudyPage() {
                   <Button type="submit" className="pop pop-ink rounded-xl" disabled={checking}>{checking ? 'Assessing…' : assessmentHint ? 'Submit retry' : 'Check my understanding'}</Button>
                   {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
                 </form>}
-                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{RESULT_LABELS[assessment.result] || assessment.result}</span><Prose className="text-sm">{assessment.feedback}</Prose>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}<div className="flex flex-wrap gap-2"><Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()}>{ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button>{assessment.nextAction !== 'another_question' && <Button type="button" variant="outline" className="rounded-xl" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Try another question'}</Button>}</div></div>}
+                {assessment && <div className="mt-4 space-y-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${RESULT_STYLES[assessment.result] || 'bg-muted'}`}>{RESULT_LABELS[assessment.result] || assessment.result}</span><Prose className="text-sm">{assessment.feedback}</Prose>{assessment.strengths.length > 0 && <div><p className="text-xs font-semibold text-success">What you understand</p><ul className="mt-1 list-disc pl-5 text-sm">{assessment.strengths.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}{assessment.gaps.length > 0 && <div><p className="text-xs font-semibold text-warning">What to work on</p><ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{assessment.gaps.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></div>}<div className="flex flex-wrap gap-2"><Button className="pop pop-ink rounded-xl" onClick={() => void followRecommendation()} disabled={busy}>{busy ? 'Opening tutor…' : ACTION_LABELS[assessment.nextAction] || 'Continue'}</Button>{assessment.nextAction !== 'another_question' && <Button type="button" variant="outline" className="rounded-xl" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Try another question'}</Button>}</div>{assessment.nextAction !== 'another_question' && <p className="text-xs text-muted-foreground">The recommended action continues in the Tutor panel.</p>}</div>}
               </section>
 
               <section className="pop rounded-2xl bg-card p-5"><h2 className="font-semibold">Your notes</h2><textarea value={note} onChange={(event) => setNote(event.target.value)} onBlur={() => void updateNote(id, note)} placeholder="Capture an explanation in your own words…" className="mt-3 min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" /><p className="mt-1 text-xs text-muted-foreground">Saved when you leave the field. The tutor can use these notes.</p></section>

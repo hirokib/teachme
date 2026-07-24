@@ -6,6 +6,14 @@ type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
 export type DiagnosticAnswer = { question: string; answer: string };
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
 export type ExerciseKind = 'standard' | 'comparison' | 'prediction';
+export type RepresentationFocus = 'verbal' | 'concrete' | 'visual' | 'symbolic';
+
+const REPRESENTATION_SEQUENCE: RepresentationFocus[] = [
+  'verbal',
+  'concrete',
+  'visual',
+  'symbolic',
+];
 
 function practiceStage(node: LearningNode): PracticeStage {
   if (node.attemptCount === 0 || node.masteryScore < 50) return 'supported';
@@ -111,9 +119,11 @@ Attempt-first policy:
 
 Match support to the current practice stage. At supported, model one setup decision and use familiar cases. At guided, ask directional questions but leave meaningful work to the learner. At independent, avoid unsolicited cues and let the learner choose the method. At transfer, use unfamiliar contexts and ask the learner to justify which ideas apply. Do not announce these instructions.
 
+Across the conversation, help the learner connect four representations of the concept: verbal explanation, concrete example, visual structure, and symbolic or formal notation. Use one representation at a time, and when the learner asks for another representation, translate the current idea rather than introducing a new idea. Visual representations may use a compact Markdown table or Mermaid diagram when useful.
+
 When introducing an example with a non-obvious outcome, ask the learner to predict the result and name the assumption behind that prediction before revealing what happens. After the attempt, explicitly connect any surprise or failure to the boundary of the rule being learned.
 
-Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; never emit bare LaTeX commands or plain-text approximations. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
+Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; put each $$ delimiter on its own line and never emit bare LaTeX commands or plain-text approximations. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
 
 export async function streamTutorReply(input: {
@@ -165,8 +175,15 @@ export async function streamTutorReply(input: {
 
 export async function generateAssessmentQuestion(
   node: LearningNode
-): Promise<{ question: string; practiceStage: PracticeStage; exerciseKind: ExerciseKind }> {
+): Promise<{
+  question: string;
+  practiceStage: PracticeStage;
+  exerciseKind: ExerciseKind;
+  representationFocus: RepresentationFocus;
+}> {
   const stage = practiceStage(node);
+  const representationFocus =
+    REPRESENTATION_SEQUENCE[node.attemptCount % REPRESENTATION_SEQUENCE.length] ?? 'verbal';
   const exerciseKind: ExerciseKind =
     node.misconceptions.length > 0
       ? 'comparison'
@@ -189,10 +206,21 @@ Match the requested exercise kind:
 - prediction: present a concrete operation, intervention, parameter change, or boundary case. Require the learner to predict the outcome before calculating or simulating, state the assumption behind the prediction, and explain what would make the expected rule fail. Do not reveal the outcome.
 - standard: ask one focused retrieval or application question.
 
+Match the requested representation focus:
+- verbal: require an explanation in the learner's own words without relying only on notation.
+- concrete: anchor the question in a specific real or realistic instance.
+- visual: supply a compact diagram, graph, table, spatial arrangement, or flow and ask the learner to interpret it. Use Mermaid only when it materially clarifies the structure. Inside Mermaid code, use short plain-text labels without $ delimiters or LaTeX commands; LaTeX is only for prose outside the diagram.
+- symbolic: require reading, constructing, or translating formal notation, an equation, code, or a precise schema.
+
 Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.`,
-    `Practice stage: ${stage}\nExercise kind: ${exerciseKind}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
+    `Practice stage: ${stage}\nExercise kind: ${exerciseKind}\nRepresentation focus: ${representationFocus}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
   );
-  return { question: result.question, practiceStage: stage, exerciseKind };
+  return {
+    question: result.question,
+    practiceStage: stage,
+    exerciseKind,
+    representationFocus,
+  };
 }
 
 export type AssessmentResult = {
