@@ -9,6 +9,7 @@ import {
   streamTutorMessage,
   updateNote,
   type Assessment,
+  type PracticeStage,
   type StudyDetail,
 } from './learning-api';
 
@@ -36,6 +37,20 @@ const RESULT_LABELS: Record<string, string> = {
   not_yet: 'Not yet correct',
 };
 
+const PRACTICE_STAGE_LABELS: Record<PracticeStage, string> = {
+  supported: 'Supported practice',
+  guided: 'Guided practice',
+  independent: 'Independent practice',
+  transfer: 'Transfer challenge',
+};
+
+const PRACTICE_STAGE_HELP: Record<PracticeStage, string> = {
+  supported: 'A familiar case with one setup cue.',
+  guided: 'A structured application without the method supplied.',
+  independent: 'No setup cues—you choose the approach.',
+  transfer: 'Apply the idea in an unfamiliar situation.',
+};
+
 export function StudyPage() {
   const { nodeId } = useParams({ strict: false });
   const id = Number(nodeId);
@@ -45,6 +60,7 @@ export function StudyPage() {
   const [initialRecall, setInitialRecall] = useState('');
   const [note, setNote] = useState('');
   const [question, setQuestion] = useState('');
+  const [practiceStage, setPracticeStage] = useState<PracticeStage | null>(null);
   const [answer, setAnswer] = useState('');
   const [initialAnswer, setInitialAnswer] = useState('');
   const [assessmentHint, setAssessmentHint] = useState('');
@@ -101,9 +117,12 @@ export function StudyPage() {
     setInitialAnswer('');
     setAssessmentHint('');
     setInitialResult(null);
+    setPracticeStage(null);
     setError('');
     try {
-      setQuestion(await generateQuestion(id));
+      const generated = await generateQuestion(id);
+      setQuestion(generated.question);
+      setPracticeStage(generated.practiceStage);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -234,6 +253,7 @@ export function StudyPage() {
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
+                  {practiceStage && <div><p className="text-xs font-semibold uppercase tracking-wide text-primary">{PRACTICE_STAGE_LABELS[practiceStage]}</p><p className="mt-1 text-xs text-muted-foreground">{PRACTICE_STAGE_HELP[practiceStage]}</p></div>}
                   <Prose className="text-sm font-medium">{question}</Prose>
                   {assessmentHint && (
                     <div className="rounded-xl bg-warning/10 p-3">

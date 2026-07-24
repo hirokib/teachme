@@ -4,6 +4,14 @@ import type { LearningResearch } from './learning-research.js';
 
 type CurriculumResponse = { title: string; nodes: CurriculumNodeInput[] };
 export type DiagnosticAnswer = { question: string; answer: string };
+export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
+
+function practiceStage(node: LearningNode): PracticeStage {
+  if (node.attemptCount === 0 || node.masteryScore < 50) return 'supported';
+  if (node.misconceptions.length > 0 || node.masteryScore < 75) return 'guided';
+  if (node.masteryScore < 90) return 'independent';
+  return 'transfer';
+}
 
 export async function generatePrerequisiteDiagnostic(input: {
   goal: string;
@@ -70,6 +78,7 @@ function tutorSystem(
   note: string,
   isInitialRetrieval: boolean
 ): string {
+  const stage = practiceStage(node);
   const prerequisiteProgress = related
     .filter((candidate) => node.prerequisites.includes(candidate.title))
     .map((candidate) => `${candidate.title}: ${candidate.masteryScore}% mastery`)
@@ -86,6 +95,7 @@ Learning objective: ${node.learningObjective}
 Completion criterion: ${node.completionCriteria}
 Known prerequisite progress: ${prerequisiteProgress || 'No recorded prerequisite evidence'}
 Recorded misconceptions: ${node.misconceptions.join('; ') || 'None yet'}
+Current practice stage: ${stage}
 Learner notes: ${note || 'None'}
 Source-grounded plan research: ${plan.researchContext || 'No external sources were recorded for this plan.'}
 
@@ -97,6 +107,8 @@ Attempt-first policy:
 - If no same-problem attempt is present, do not give the answer, carry out the solution, or expose decisive intermediate steps. Ask the learner to make a prediction or show a first step. You may give one small setup cue that does not reveal the answer.
 - An earlier attempt on a different problem, the initial closed-note recall, or merely saying "I don't know" does not count.
 - Once the learner has attempted that problem, respond directly to their reasoning and then provide the targeted explanation or solution they need.
+
+Match support to the current practice stage. At supported, model one setup decision and use familiar cases. At guided, ask directional questions but leave meaningful work to the learner. At independent, avoid unsolicited cues and let the learner choose the method. At transfer, use unfamiliar contexts and ask the learner to justify which ideas apply. Do not announce these instructions.
 
 Teach exactly one idea per response in 2 to 6 short paragraphs. Adapt to the learner's message and recorded gaps. Prefer concrete examples and questions that make the learner think. Format every mathematical expression as LaTeX delimited by $...$ or $$...$$; never emit bare LaTeX commands or plain-text approximations. When relying on the recorded research, cite the relevant source with a Markdown link. Never invent citations. Do not claim mastery without evidence. When the learner appears ready, invite them to take the knowledge check. Do not output hidden markers or JSON.`;
 }
@@ -148,11 +160,23 @@ export async function streamTutorReply(input: {
   );
 }
 
-export async function generateAssessmentQuestion(node: LearningNode): Promise<{ question: string }> {
-  return completeCodexJson<{ question: string }>(
-    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. If a recorded mistaken rule exists, target exactly one with a new situation that reveals whether the learner still uses it; do not quote or name the mistaken rule in the question. Otherwise, test the completion criterion. Format every mathematical expression as LaTeX using $...$ for inline math or $$...$$ for display math. Never use plain-text approximations such as ^T for transpose.`,
-    `Concept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
+export async function generateAssessmentQuestion(
+  node: LearningNode
+): Promise<{ question: string; practiceStage: PracticeStage }> {
+  const stage = practiceStage(node);
+  const result = await completeCodexJson<{ question: string }>(
+    `You write concise retrieval-practice questions. Return only JSON: {"question":"..."}. Ask one question that requires the learner to explain, apply, compare, or predict. Do not make it multiple choice and do not reveal the answer. If a recorded mistaken rule exists, target exactly one with a new situation that reveals whether the learner still uses it; do not quote or name the mistaken rule in the question. Otherwise, test the completion criterion.
+
+Match the requested practice stage:
+- supported: use a familiar, single-step case and state one useful representation or setup decision without doing the work.
+- guided: use a moderately structured application, but do not state the method or first step.
+- independent: use a multi-step or mixed problem with no setup cues.
+- transfer: use an unfamiliar context that requires choosing and justifying which idea applies.
+
+Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.`,
+    `Practice stage: ${stage}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
   );
+  return { question: result.question, practiceStage: stage };
 }
 
 export type AssessmentResult = {
@@ -176,6 +200,7 @@ export async function assessResponse(
   response: string,
   priorAttempt?: { response: string; hint: string }
 ): Promise<AttemptAssessmentResult> {
+  const stage = practiceStage(node);
   const assessment = await completeCodexJson<AttemptAssessmentResult>(
     `You assess learning evidence conservatively. Return only JSON with:
 {"result":"not_yet|partial|mastered","strengths":["..."],"gaps":["..."],"mistakenRules":["..."],"resolvedMisconceptions":["..."],"nextAction":"continue|simpler_explanation|analogy|worked_example|revisit_prerequisite|another_question|complete","feedback":"...","masteryScore":0,"hint":"..."}
@@ -185,6 +210,8 @@ For resolvedMisconceptions, copy an entry verbatim from the recorded mistaken ru
 In every generated string, format mathematical expressions as LaTeX delimited by $...$ or $$...$$ and escape backslashes correctly for JSON. Never emit bare LaTeX commands.
 The hint must be one short question or cue that points toward the most important missing idea without revealing the answer. Never put the answer or a full explanation in the hint.`,
     `Concept: ${node.title}
+Practice stage: ${stage}
+Hint support: ${stage === 'supported' ? 'Name a useful representation or setup choice.' : stage === 'guided' ? 'Ask one directional question without naming the method.' : 'Use only a brief metacognitive question; do not add a content cue.'}
 Objective: ${node.learningObjective}
 Completion criterion: ${node.completionCriteria}
 Recorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}

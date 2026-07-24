@@ -63,6 +63,8 @@ export type AssessmentAttempt =
     }
   | ({ needsRetry: false; progress: LearningNode } & Assessment);
 
+export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
+
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -140,11 +142,12 @@ export async function streamTutorMessage(
   return reply;
 }
 
-export async function generateQuestion(nodeId: number): Promise<string> {
-  const result = await json<{ question: string }>(
+export async function generateQuestion(
+  nodeId: number
+): Promise<{ question: string; practiceStage: PracticeStage }> {
+  return json<{ question: string; practiceStage: PracticeStage }>(
     await fetch(`${API_URL}/api/nodes/${nodeId}/assessment-question`, { method: 'POST' })
   );
-  return result.question;
 }
 
 export async function assessAnswer(
