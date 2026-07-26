@@ -15,6 +15,7 @@ import {
   patchNodeNote,
   postAssessment,
   postAssessmentQuestion,
+  postSessionCompression,
   postPlan,
   postPlanDiagnostic,
   postTutorMessage,
@@ -55,6 +56,7 @@ app.post('/api/nodes/:id/tutor', postTutorMessage);
 app.post('/api/nodes/:id/assessment-question', postAssessmentQuestion);
 app.post('/api/nodes/:id/assessments', postAssessment);
 app.patch('/api/nodes/:id/note', patchNodeNote);
+app.post('/api/nodes/:id/session-compressions', postSessionCompression);
 
 app.get('/api/explorations', getExplorationSpaces);
 app.post('/api/explorations', postExplorationSpace);

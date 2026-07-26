@@ -69,6 +69,14 @@ export async function initDb() {
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS session_compressions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      node_id INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS exploration_spaces (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,

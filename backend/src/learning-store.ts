@@ -48,6 +48,12 @@ export type LearningNode = {
   misconceptions: string[];
 };
 
+export type SessionCompression = {
+  id: number;
+  content: string;
+  createdAt: string;
+};
+
 type SqlValue = string | number | Uint8Array | null;
 
 function rows(sql: string, params: SqlValue[] = []): Record<string, SqlValue>[] {
@@ -191,7 +197,26 @@ export function getNodeStudy(nodeId: number) {
     createdAt: String(row.created_at),
   }));
   const note = rows('SELECT content FROM node_notes WHERE node_id = ?', [nodeId])[0];
-  return { node, plan: plan.plan, allNodes: plan.nodes, messages, note: String(note?.content ?? '') };
+  const compression = rows(
+    `SELECT id, content, created_at FROM session_compressions
+     WHERE node_id = ? ORDER BY id DESC LIMIT 1`,
+    [nodeId]
+  )[0];
+  const latestCompression: SessionCompression | null = compression
+    ? {
+        id: Number(compression.id),
+        content: String(compression.content),
+        createdAt: String(compression.created_at),
+      }
+    : null;
+  return {
+    node,
+    plan: plan.plan,
+    allNodes: plan.nodes,
+    messages,
+    note: String(note?.content ?? ''),
+    latestCompression,
+  };
 }
 
 export function addStudyMessage(nodeId: number, role: 'user' | 'assistant', content: string): void {
@@ -206,6 +231,25 @@ export function saveNote(nodeId: number, content: string): void {
     [nodeId, content]
   );
   saveDb();
+}
+
+export function saveSessionCompression(nodeId: number, content: string): SessionCompression {
+  getDb().run(
+    'INSERT INTO session_compressions (node_id, content) VALUES (?, ?)',
+    [nodeId, content]
+  );
+  saveDb();
+  const row = rows(
+    `SELECT id, content, created_at FROM session_compressions
+     WHERE node_id = ? ORDER BY id DESC LIMIT 1`,
+    [nodeId]
+  )[0];
+  if (!row) throw new Error('Session summary was not saved');
+  return {
+    id: Number(row.id),
+    content: String(row.content),
+    createdAt: String(row.created_at),
+  };
 }
 
 export type AssessmentInput = {

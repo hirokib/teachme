@@ -6,6 +6,7 @@ import {
   assessAnswer,
   generateQuestion,
   getStudyNode,
+  saveSessionCompression,
   streamTutorMessage,
   updateNote,
   type Assessment,
@@ -68,6 +69,9 @@ export function StudyPage() {
   const [message, setMessage] = useState('');
   const [initialRecall, setInitialRecall] = useState('');
   const [note, setNote] = useState('');
+  const [compression, setCompression] = useState('');
+  const [writingCompression, setWritingCompression] = useState(false);
+  const [savingCompression, setSavingCompression] = useState(false);
   const [question, setQuestion] = useState('');
   const [practiceStage, setPracticeStage] = useState<PracticeStage | null>(null);
   const [exerciseKind, setExerciseKind] = useState<ExerciseKind | null>(null);
@@ -121,6 +125,24 @@ export function StudyPage() {
   }
 
   function stopResponse() { activeResponse.current?.abort(); }
+
+  async function endSession(event: React.FormEvent) {
+    event.preventDefault();
+    const content = compression.trim();
+    if (!content || savingCompression) return;
+    setSavingCompression(true);
+    setError('');
+    try {
+      const saved = await saveSessionCompression(id, content);
+      setStudy((current) => current ? { ...current, latestCompression: saved } : current);
+      setCompression('');
+      setWritingCompression(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingCompression(false);
+    }
+  }
 
   async function newQuestion() {
     setChecking(true);
@@ -267,7 +289,7 @@ export function StudyPage() {
             </section>
           ) : (
             <>
-              <section className="pop rounded-2xl bg-accent/40 p-5"><h2 className="font-semibold">Learning target</h2><Prose className="mt-2 text-sm text-muted-foreground">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Evidence of completion</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose></section>
+              <section className="pop rounded-2xl bg-accent/40 p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">This session’s target</p><Prose className="mt-2 text-sm font-medium">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before you stop, be able to</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose></section>
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
@@ -291,6 +313,45 @@ export function StudyPage() {
               </section>
 
               <section className="pop rounded-2xl bg-card p-5"><h2 className="font-semibold">Your notes</h2><textarea value={note} onChange={(event) => setNote(event.target.value)} onBlur={() => void updateNote(id, note)} placeholder="Capture an explanation in your own words…" className="mt-3 min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" /><p className="mt-1 text-xs text-muted-foreground">Saved when you leave the field. The tutor can use these notes.</p></section>
+
+              <section className="pop rounded-2xl bg-card p-5">
+                <h2 className="font-semibold">End this session</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Close the loop by compressing the lesson from memory.</p>
+                {study.latestCompression && !writingCompression && (
+                  <div className="mt-4 rounded-xl bg-muted/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest session summary</p>
+                    <Prose className="mt-2 text-sm">{study.latestCompression.content}</Prose>
+                  </div>
+                )}
+                {writingCompression ? (
+                  <form onSubmit={endSession} className="mt-4 space-y-3">
+                    <label htmlFor="session-compression" className="block text-sm font-medium">
+                      Without scrolling back, write 2–3 sentences: the main idea, when it applies, and one uncertainty.
+                    </label>
+                    <textarea
+                      id="session-compression"
+                      required
+                      autoFocus
+                      value={compression}
+                      onChange={(event) => setCompression(event.target.value)}
+                      placeholder="The main idea is… It applies when… I’m still unsure about…"
+                      className="min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" className="pop pop-ink rounded-xl" disabled={savingCompression || !compression.trim()}>
+                        {savingCompression ? 'Saving…' : 'Save session summary'}
+                      </Button>
+                      <Button type="button" variant="outline" className="rounded-xl" disabled={savingCompression} onClick={() => { setWritingCompression(false); setCompression(''); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <Button type="button" variant="outline" className="mt-4 rounded-xl" onClick={() => setWritingCompression(true)}>
+                    {study.latestCompression ? 'Write a new summary' : 'Write session summary'}
+                  </Button>
+                )}
+              </section>
 
               {study.node.misconceptions.length > 0 && <section className="pop pop-warning rounded-2xl bg-warning/10 p-5"><h2 className="font-semibold">Mistaken rules to revisit</h2><p className="mt-1 text-xs text-muted-foreground">Future checks will test these in new situations.</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{study.node.misconceptions.map((item) => <li key={item}><MathText>{item}</MathText></li>)}</ul></section>}
             </>

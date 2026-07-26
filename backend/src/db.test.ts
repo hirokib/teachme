@@ -88,7 +88,7 @@ async function main() {
 
   assert.ok(getDb(), 'getDb returns the live handle');
 
-  const { createPlan, getNodeStudy, saveAssessment, saveNote } = await import(
+  const { createPlan, getNodeStudy, saveAssessment, saveNote, saveSessionCompression } = await import(
     './learning-store.js'
   );
   const created = createPlan({
@@ -111,6 +111,10 @@ async function main() {
   });
   const nodeId = created.nodes[0]!.id;
   saveNote(nodeId, 'Assertions encode expectations.');
+  saveSessionCompression(
+    nodeId,
+    'An assertion compares actual behavior with an expectation. I still need to practice failure messages.'
+  );
   const mistakenRule = 'I think assertions change the value they inspect.';
   saveAssessment(nodeId, {
     result: 'partial',
@@ -127,6 +131,7 @@ async function main() {
   });
   const study = getNodeStudy(nodeId);
   assert.strictEqual(study?.note, 'Assertions encode expectations.');
+  assert.match(study?.latestCompression?.content ?? '', /failure messages/);
   assert.match(study?.plan.diagnosticContext ?? '', /expected result/);
   assert.strictEqual(study?.node.masteryScore, 90);
   assert.strictEqual(study?.node.status, 'completed');
@@ -240,6 +245,11 @@ async function main() {
     persisted.exec('SELECT content FROM node_notes WHERE node_id = ?', [nodeId])[0]?.values,
     [['Assertions encode expectations.']],
     'write must survive a non-graceful shutdown'
+  );
+  assert.deepStrictEqual(
+    persisted.exec('SELECT COUNT(*) FROM session_compressions WHERE node_id = ?', [nodeId])[0]?.values,
+    [[1]],
+    'session compression must persist to disk'
   );
   const planCount = persisted.exec('SELECT COUNT(*) FROM learning_plans');
   assert.deepStrictEqual(planCount[0]?.values, [[1]], 'learning plan must persist to disk');

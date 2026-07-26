@@ -38,6 +38,7 @@ export type StudyDetail = {
   allNodes: LearningNode[];
   messages: { id: number; role: 'user' | 'assistant'; content: string; createdAt: string }[];
   note: string;
+  latestCompression: { id: number; content: string; createdAt: string } | null;
 };
 
 export type Assessment = {
@@ -188,4 +189,17 @@ export async function updateNote(nodeId: number, content: string): Promise<void>
     body: JSON.stringify({ content }),
   });
   if (!response.ok) await json(response);
+}
+
+export async function saveSessionCompression(
+  nodeId: number,
+  content: string
+): Promise<{ id: number; content: string; createdAt: string }> {
+  return json(
+    await fetch(`${API_URL}/api/nodes/${nodeId}/session-compressions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+  );
 }

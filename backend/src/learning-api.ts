@@ -16,6 +16,7 @@ import {
   listPlans,
   saveAssessment,
   saveNote,
+  saveSessionCompression,
 } from './learning-store.js';
 import { isCodexConnected } from './codex.js';
 import { researchLearningGoal } from './learning-research.js';
@@ -244,4 +245,19 @@ export function patchNodeNote(req: Request, res: Response): void {
   }
   saveNote(node.id, content.slice(0, 20_000));
   res.status(204).send();
+}
+
+export function postSessionCompression(req: Request, res: Response): void {
+  const id = numericId(req.params.id);
+  const node = id ? getNode(id) : null;
+  const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+  if (!node) {
+    res.status(404).json({ error: 'Learning node not found' });
+    return;
+  }
+  if (!content) {
+    res.status(400).json({ error: 'Session summary is required' });
+    return;
+  }
+  res.status(201).json(saveSessionCompression(node.id, content.slice(0, 5_000)));
 }
