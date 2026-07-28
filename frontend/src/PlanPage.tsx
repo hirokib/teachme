@@ -75,9 +75,8 @@ export function PlanPage() {
             <ol className="mt-4 grid gap-3">
               {dueReviews.map((node) => (
                 <li key={node.id}>
-                  <Link
-                    to="/nodes/$nodeId"
-                    params={{ nodeId: String(node.id) }}
+                  <a
+                    href={`/nodes/${node.id}#knowledge-check`}
                     className="grid gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary sm:grid-cols-[1fr_auto] sm:items-center"
                   >
                     <span>
@@ -87,7 +86,7 @@ export function PlanPage() {
                       </span>
                     </span>
                     <span className="text-sm font-semibold text-primary">Review now →</span>
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ol>

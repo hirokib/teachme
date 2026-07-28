@@ -70,6 +70,7 @@ export type AssessmentAttempt =
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
 export type ExerciseKind = 'standard' | 'comparison' | 'prediction';
 export type RepresentationFocus = 'verbal' | 'concrete' | 'visual' | 'symbolic';
+export type AssessmentMode = 'learning' | 'retention';
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -155,12 +156,14 @@ export async function generateQuestion(
   practiceStage: PracticeStage;
   exerciseKind: ExerciseKind;
   representationFocus: RepresentationFocus;
+  assessmentMode: AssessmentMode;
 }> {
   return json<{
     question: string;
     practiceStage: PracticeStage;
     exerciseKind: ExerciseKind;
     representationFocus: RepresentationFocus;
+    assessmentMode: AssessmentMode;
   }>(
     await fetch(`${API_URL}/api/nodes/${nodeId}/assessment-question`, { method: 'POST' })
   );

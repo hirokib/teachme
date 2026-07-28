@@ -7,6 +7,7 @@ export type DiagnosticAnswer = { question: string; answer: string };
 export type PracticeStage = 'supported' | 'guided' | 'independent' | 'transfer';
 export type ExerciseKind = 'standard' | 'comparison' | 'prediction';
 export type RepresentationFocus = 'verbal' | 'concrete' | 'visual' | 'symbolic';
+export type AssessmentMode = 'learning' | 'retention';
 
 const REPRESENTATION_SEQUENCE: RepresentationFocus[] = [
   'verbal',
@@ -180,12 +181,19 @@ export async function generateAssessmentQuestion(
   practiceStage: PracticeStage;
   exerciseKind: ExerciseKind;
   representationFocus: RepresentationFocus;
+  assessmentMode: AssessmentMode;
 }> {
-  const stage = practiceStage(node);
+  const assessmentMode: AssessmentMode =
+    node.nextReviewAt && new Date(node.nextReviewAt).getTime() <= Date.now()
+      ? 'retention'
+      : 'learning';
+  const stage = assessmentMode === 'retention' ? 'transfer' : practiceStage(node);
   const representationFocus =
     REPRESENTATION_SEQUENCE[node.attemptCount % REPRESENTATION_SEQUENCE.length] ?? 'verbal';
   const exerciseKind: ExerciseKind =
-    node.misconceptions.length > 0
+    assessmentMode === 'retention'
+      ? node.attemptCount % 2 === 0 ? 'prediction' : 'comparison'
+      : node.misconceptions.length > 0
       ? 'comparison'
       : node.attemptCount === 0
         ? 'standard'
@@ -201,6 +209,8 @@ Match the requested practice stage:
 - independent: use a multi-step or mixed problem with no setup cues.
 - transfer: use an unfamiliar context that requires choosing and justifying which idea applies.
 
+If the assessment mode is retention, this is a delayed, closed-note check. Use a new situation rather than repeating a previous-looking exercise, provide no setup cue, and require both recall of the central rule and transfer—deciding whether and how it applies. Do not call it a memory test inside the question.
+
 Match the requested exercise kind:
 - comparison: present two closely related cases that differ in one conceptually important way. Require the learner to classify, predict, or apply the idea to both and explain which difference changes the result. Do not state the decisive principle.
 - prediction: present a concrete operation, intervention, parameter change, or boundary case. Require the learner to predict the outcome before calculating or simulating, state the assumption behind the prediction, and explain what would make the expected rule fail. Do not reveal the outcome.
@@ -212,14 +222,16 @@ Match the requested representation focus:
 - visual: supply a compact diagram, graph, table, spatial arrangement, or flow and ask the learner to interpret it. Use Mermaid only when it materially clarifies the structure. Inside Mermaid code, use short plain-text labels without $ delimiters or LaTeX commands; LaTeX is only for prose outside the diagram.
 - symbolic: require reading, constructing, or translating formal notation, an equation, code, or a precise schema.
 
-Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.`,
-    `Practice stage: ${stage}\nExercise kind: ${exerciseKind}\nRepresentation focus: ${representationFocus}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
+Format every mathematical expression as LaTeX using $...$ for short inline math or $$...$$ for display math. Put long equations, matrices, and multi-part computations in their own $$...$$ display block so they remain readable in a narrow panel. Never use plain-text approximations such as ^T for transpose.
+When showing multiple labeled models or cases such as A, B, and C, put each case in its own separate $$...$$ display block. Do not pack them into an aligned, gathered, array, or other multi-row environment; tightly spaced rows can clip symbols and annotations in the narrow knowledge-check panel.`,
+    `Assessment mode: ${assessmentMode}\nPractice stage: ${stage}\nExercise kind: ${exerciseKind}\nRepresentation focus: ${representationFocus}\nConcept: ${node.title}\nObjective: ${node.learningObjective}\nCompletion criterion: ${node.completionCriteria}\nRecorded mistaken rules: ${node.misconceptions.join('; ') || 'None'}`
   );
   return {
     question: result.question,
     practiceStage: stage,
     exerciseKind,
     representationFocus,
+    assessmentMode,
   };
 }
 

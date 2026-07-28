@@ -10,6 +10,7 @@ import {
   streamTutorMessage,
   updateNote,
   type Assessment,
+  type AssessmentMode,
   type ExerciseKind,
   type PracticeStage,
   type RepresentationFocus,
@@ -61,6 +62,12 @@ const REPRESENTATION_LABELS: Record<RepresentationFocus, string> = {
   symbolic: 'Symbolic representation',
 };
 
+const CHECK_GENERATION_STEPS = [
+  'Choosing a new transfer situation…',
+  'Targeting your previous gaps…',
+  'Writing a closed-note review…',
+];
+
 function reviewLabel(node: StudyDetail['node']): string | null {
   if (!node.nextReviewAt || node.reviewIntervalDays < 1) return null;
   if (new Date(node.nextReviewAt).getTime() <= Date.now()) return 'Review due now';
@@ -84,6 +91,7 @@ export function StudyPage() {
   const [practiceStage, setPracticeStage] = useState<PracticeStage | null>(null);
   const [exerciseKind, setExerciseKind] = useState<ExerciseKind | null>(null);
   const [representationFocus, setRepresentationFocus] = useState<RepresentationFocus | null>(null);
+  const [assessmentMode, setAssessmentMode] = useState<AssessmentMode | null>(null);
   const [answer, setAnswer] = useState('');
   const [initialAnswer, setInitialAnswer] = useState('');
   const [assessmentHint, setAssessmentHint] = useState('');
@@ -91,10 +99,23 @@ export function StudyPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [questionError, setQuestionError] = useState('');
+  const [generationStep, setGenerationStep] = useState(0);
   const [error, setError] = useState('');
   const activeResponse = useRef<AbortController | null>(null);
   const tutorPanel = useRef<HTMLElement | null>(null);
+  const autoReviewStarted = useRef(false);
   useEffect(() => () => activeResponse.current?.abort(), []);
+  useEffect(() => {
+    if (!checking || question) {
+      setGenerationStep(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setGenerationStep((current) => (current + 1) % CHECK_GENERATION_STEPS.length);
+    }, 1400);
+    return () => window.clearInterval(timer);
+  }, [checking, question]);
 
   async function load() {
     const result = await getStudyNode(id);
@@ -106,6 +127,18 @@ export function StudyPage() {
   useEffect(() => {
     load().catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)));
   }, [id]);
+
+  useEffect(() => {
+    if (
+      study &&
+      window.location.hash === '#knowledge-check' &&
+      !autoReviewStarted.current
+    ) {
+      autoReviewStarted.current = true;
+      document.getElementById('knowledge-check')?.scrollIntoView({ block: 'start' });
+      void newQuestion();
+    }
+  }, [study]);
 
   async function sendTutor(text: string) {
     const trimmed = text.trim();
@@ -163,6 +196,8 @@ export function StudyPage() {
     setPracticeStage(null);
     setExerciseKind(null);
     setRepresentationFocus(null);
+    setAssessmentMode(null);
+    setQuestionError('');
     setError('');
     try {
       const generated = await generateQuestion(id);
@@ -170,8 +205,9 @@ export function StudyPage() {
       setPracticeStage(generated.practiceStage);
       setExerciseKind(generated.exerciseKind);
       setRepresentationFocus(generated.representationFocus);
+      setAssessmentMode(generated.assessmentMode);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setQuestionError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setChecking(false);
     }
@@ -231,6 +267,9 @@ export function StudyPage() {
 
   const awaitingInitialRecall = messages.length === 0;
   const nextReviewLabel = reviewLabel(study.node);
+  const reviewIsDue = Boolean(
+    study.node.nextReviewAt && new Date(study.node.nextReviewAt).getTime() <= Date.now()
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -300,9 +339,20 @@ export function StudyPage() {
             <>
               <section className="pop rounded-2xl bg-accent/40 p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">This session’s target</p><Prose className="mt-2 text-sm font-medium">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before you stop, be able to</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose>{nextReviewLabel && <div className="mt-4 rounded-xl bg-background/70 px-3 py-2"><p className="text-xs font-semibold text-primary">{nextReviewLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">This interval adapts to your latest knowledge-check result.</p></div>}</section>
 
-              <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
+              <section id="knowledge-check" className="pop scroll-mt-4 rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">{assessmentMode === 'retention' ? 'Delayed retention check' : 'Knowledge check'}</h2>{!question && !checking && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()}>{questionError ? 'Retry' : 'Start check'}</Button>}</div>
+                {!question && checking && (
+                  <div role="status" aria-live="polite" className="mt-4 rounded-xl bg-accent/60 p-4">
+                    <p className="font-medium">{reviewIsDue ? 'Preparing your delayed review…' : 'Preparing your knowledge check…'}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{CHECK_GENERATION_STEPS[generationStep]}</p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-background" aria-hidden="true">
+                      <div className="learning-plan-loader h-full w-1/3 rounded-full bg-gradient-to-r from-primary via-chart-4 to-success" />
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">The answer field will open when the question is ready.</p>
+                  </div>
+                )}
+                {!question && questionError && !checking && <p role="alert" className="mt-3 text-sm text-destructive">{questionError}</p>}
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">
-                  {practiceStage && <div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{PRACTICE_STAGE_LABELS[practiceStage]}</p>{representationFocus && <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{REPRESENTATION_LABELS[representationFocus]}</span>}{exerciseKind === 'comparison' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Comparison exercise</span>}{exerciseKind === 'prediction' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Prediction exercise</span>}</div><p className="mt-1 text-xs text-muted-foreground">{exerciseKind === 'comparison' ? 'Compare both cases and explain the difference that matters.' : exerciseKind === 'prediction' ? 'Predict before calculating, state your assumption, and identify when the rule could fail.' : PRACTICE_STAGE_HELP[practiceStage]}</p></div>}
+                  {practiceStage && <div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{assessmentMode === 'retention' ? 'Delayed retrieval' : PRACTICE_STAGE_LABELS[practiceStage]}</p>{assessmentMode === 'retention' && <span className="rounded-full bg-warning/15 px-2 py-1 text-[11px] font-medium text-warning">Transfer check</span>}{representationFocus && <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{REPRESENTATION_LABELS[representationFocus]}</span>}{exerciseKind === 'comparison' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Comparison exercise</span>}{exerciseKind === 'prediction' && <span className="rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-accent-foreground">Prediction exercise</span>}</div><p className="mt-1 text-xs text-muted-foreground">{assessmentMode === 'retention' ? 'Answer without notes. This uses a new situation to test what remained and whether you can transfer it.' : exerciseKind === 'comparison' ? 'Compare both cases and explain the difference that matters.' : exerciseKind === 'prediction' ? 'Predict before calculating, state your assumption, and identify when the rule could fail.' : PRACTICE_STAGE_HELP[practiceStage]}</p></div>}
                   <Prose className="text-sm font-medium">{question}</Prose>
                   {assessmentHint && (
                     <div className="rounded-xl bg-warning/10 p-3">
