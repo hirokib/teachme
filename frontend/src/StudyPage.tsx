@@ -61,6 +61,14 @@ const REPRESENTATION_LABELS: Record<RepresentationFocus, string> = {
   symbolic: 'Symbolic representation',
 };
 
+function reviewLabel(node: StudyDetail['node']): string | null {
+  if (!node.nextReviewAt || node.reviewIntervalDays < 1) return null;
+  if (new Date(node.nextReviewAt).getTime() <= Date.now()) return 'Review due now';
+  return node.reviewIntervalDays === 1
+    ? 'Review again tomorrow'
+    : `Review again in ${node.reviewIntervalDays} days`;
+}
+
 export function StudyPage() {
   const { nodeId } = useParams({ strict: false });
   const id = Number(nodeId);
@@ -222,6 +230,7 @@ export function StudyPage() {
   if (!study) return <p className={error ? 'text-destructive' : 'text-muted-foreground'}>{error || 'Loading study workspace…'}</p>;
 
   const awaitingInitialRecall = messages.length === 0;
+  const nextReviewLabel = reviewLabel(study.node);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -289,7 +298,7 @@ export function StudyPage() {
             </section>
           ) : (
             <>
-              <section className="pop rounded-2xl bg-accent/40 p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">This session’s target</p><Prose className="mt-2 text-sm font-medium">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before you stop, be able to</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose></section>
+              <section className="pop rounded-2xl bg-accent/40 p-5"><p className="text-xs font-semibold uppercase tracking-wide text-primary">This session’s target</p><Prose className="mt-2 text-sm font-medium">{study.node.learningObjective}</Prose><h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before you stop, be able to</h3><Prose className="mt-2 text-sm">{study.node.completionCriteria}</Prose>{nextReviewLabel && <div className="mt-4 rounded-xl bg-background/70 px-3 py-2"><p className="text-xs font-semibold text-primary">{nextReviewLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">This interval adapts to your latest knowledge-check result.</p></div>}</section>
 
               <section className="pop rounded-2xl bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">Knowledge check</h2>{!question && <Button type="button" size="sm" className="pop pop-ink rounded-lg" onClick={() => void newQuestion()} disabled={checking}>{checking ? 'Writing…' : 'Start check'}</Button>}</div>
                 {question && !assessment && <form onSubmit={checkAnswer} className="mt-4 space-y-4">

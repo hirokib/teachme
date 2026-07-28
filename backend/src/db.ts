@@ -49,6 +49,9 @@ export async function initDb() {
       mastery_score INTEGER NOT NULL DEFAULT 0,
       attempt_count INTEGER NOT NULL DEFAULT 0,
       misconceptions_json TEXT NOT NULL DEFAULT '[]',
+      last_reviewed_at TEXT,
+      next_review_at TEXT,
+      review_interval_days INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (node_id) REFERENCES learning_nodes(id) ON DELETE CASCADE
     );
@@ -135,9 +138,16 @@ export async function initDb() {
   }
 
   const progressColumns = db.exec('PRAGMA table_info(learner_progress)')[0];
-  for (const column of ['confidence', 'last_reviewed_at', 'next_review_at']) {
-    if (progressColumns?.values.some((candidate) => candidate[1] === column)) {
-      db.run(`ALTER TABLE learner_progress DROP COLUMN ${column}`);
+  if (progressColumns?.values.some((candidate) => candidate[1] === 'confidence')) {
+    db.run('ALTER TABLE learner_progress DROP COLUMN confidence');
+  }
+  for (const [column, definition] of [
+    ['last_reviewed_at', 'TEXT'],
+    ['next_review_at', 'TEXT'],
+    ['review_interval_days', 'INTEGER NOT NULL DEFAULT 0'],
+  ]) {
+    if (!progressColumns?.values.some((candidate) => candidate[1] === column)) {
+      db.run(`ALTER TABLE learner_progress ADD COLUMN ${column} ${definition}`);
     }
   }
 

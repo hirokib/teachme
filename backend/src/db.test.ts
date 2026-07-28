@@ -74,10 +74,14 @@ async function main() {
   );
   const progressColumns = db.exec('PRAGMA table_info(learner_progress)')[0]?.values ?? [];
   assert.ok(
-    !progressColumns.some((column) =>
-      ['confidence', 'last_reviewed_at', 'next_review_at'].includes(String(column[1]))
+    !progressColumns.some((column) => column[1] === 'confidence'),
+    'unused confidence column must be removed'
+  );
+  assert.ok(
+    ['last_reviewed_at', 'next_review_at', 'review_interval_days'].every((name) =>
+      progressColumns.some((column) => column[1] === name)
     ),
-    'unused learning progress columns must be removed'
+    'adaptive review columns must be available'
   );
   const threadColumns = db.exec('PRAGMA table_info(exploration_threads)')[0]?.values ?? [];
   assert.ok(
@@ -136,6 +140,9 @@ async function main() {
   assert.strictEqual(study?.node.masteryScore, 90);
   assert.strictEqual(study?.node.status, 'completed');
   assert.deepStrictEqual(study?.node.misconceptions, []);
+  assert.strictEqual(study?.node.reviewIntervalDays, 4);
+  assert.ok(study?.node.lastReviewedAt);
+  assert.ok(new Date(study?.node.nextReviewAt ?? '').getTime() > Date.now());
 
   const {
     addExplorationMessage,

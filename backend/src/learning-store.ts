@@ -46,6 +46,9 @@ export type LearningNode = {
   masteryScore: number;
   attemptCount: number;
   misconceptions: string[];
+  lastReviewedAt: string | null;
+  nextReviewAt: string | null;
+  reviewIntervalDays: number;
 };
 
 export type SessionCompression = {
@@ -104,11 +107,15 @@ function mapNode(row: Record<string, SqlValue>): LearningNode {
     masteryScore: Number(row.mastery_score ?? 0),
     attemptCount: Number(row.attempt_count ?? 0),
     misconceptions: parseList(row.misconceptions_json),
+    lastReviewedAt: row.last_reviewed_at === null ? null : String(row.last_reviewed_at),
+    nextReviewAt: row.next_review_at === null ? null : String(row.next_review_at),
+    reviewIntervalDays: Number(row.review_interval_days ?? 0),
   };
 }
 
 const NODE_SELECT = `
-  SELECT n.*, p.mastery_score, p.attempt_count, p.misconceptions_json
+  SELECT n.*, p.mastery_score, p.attempt_count, p.misconceptions_json,
+    p.last_reviewed_at, p.next_review_at, p.review_interval_days
   FROM learning_nodes n
   LEFT JOIN learner_progress p ON p.node_id = n.id
 `;
@@ -274,14 +281,28 @@ export function saveAssessment(nodeId: number, input: AssessmentInput): void {
     new Set([...retained, ...(input.mistakenRules ?? []).map((item) => item.trim()).filter(Boolean)])
   ).slice(-12);
   const status = input.result === 'mastered' ? 'completed' : 'in_progress';
+  const previousInterval = current.reviewIntervalDays;
+  const reviewIntervalDays =
+    input.result === 'not_yet'
+      ? 1
+      : input.result === 'partial'
+        ? Math.max(2, Math.min(4, Math.ceil(previousInterval * 0.75)))
+        : previousInterval < 1
+          ? 3
+          : Math.min(60, Math.max(previousInterval + 1, Math.round(previousInterval * 2)));
+  const nextReviewAt = new Date(
+    Date.now() + reviewIntervalDays * 24 * 60 * 60 * 1_000
+  ).toISOString();
 
   db.run('BEGIN');
   try {
     db.run(
       `UPDATE learner_progress SET mastery_score = ?,
-       attempt_count = attempt_count + 1, misconceptions_json = ?, updated_at = CURRENT_TIMESTAMP
+       attempt_count = attempt_count + 1, misconceptions_json = ?,
+       last_reviewed_at = CURRENT_TIMESTAMP, next_review_at = ?, review_interval_days = ?,
+       updated_at = CURRENT_TIMESTAMP
        WHERE node_id = ?`,
-      [input.masteryScore, JSON.stringify(misconceptions), nodeId]
+      [input.masteryScore, JSON.stringify(misconceptions), nextReviewAt, reviewIntervalDays, nodeId]
     );
     db.run('UPDATE learning_nodes SET status = ? WHERE id = ?', [status, nodeId]);
     db.run('COMMIT');

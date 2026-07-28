@@ -27,6 +27,9 @@ export type LearningNode = {
   masteryScore: number;
   attemptCount: number;
   misconceptions: string[];
+  lastReviewedAt: string | null;
+  nextReviewAt: string | null;
+  reviewIntervalDays: number;
 };
 
 export type PlanDetail = { plan: LearningPlan; nodes: LearningNode[] };
