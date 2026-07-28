@@ -5,6 +5,10 @@ import { MathText, Prose } from './Prose';
 
 type PlanResearch = { summary?: string; sources?: { title: string; url: string; relevance?: string }[] };
 
+function reviewDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(value));
+}
+
 function readResearch(value: string): PlanResearch | null {
   try {
     const parsed = JSON.parse(value) as PlanResearch;
@@ -28,6 +32,15 @@ export function PlanPage() {
 
   const completed = detail.nodes.filter((node) => node.status === 'completed').length;
   const research = readResearch(detail.plan.researchContext);
+  const scheduledReviews = detail.nodes
+    .filter((node) => node.nextReviewAt)
+    .sort((a, b) => new Date(a.nextReviewAt!).getTime() - new Date(b.nextReviewAt!).getTime());
+  const dueReviews = scheduledReviews.filter(
+    (node) => new Date(node.nextReviewAt!).getTime() <= Date.now()
+  );
+  const nextUpcomingReview = scheduledReviews.find(
+    (node) => new Date(node.nextReviewAt!).getTime() > Date.now()
+  );
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
@@ -39,6 +52,47 @@ export function PlanPage() {
           <span>{completed}/{detail.nodes.length} mastered</span>
         </div>
       </header>
+
+      <section className={`pop rounded-2xl p-5 ${dueReviews.length ? 'pop-warning bg-warning/10' : 'bg-accent/40'}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Review queue</p>
+              <h2 className="mt-1 text-xl font-semibold">
+                {dueReviews.length
+                  ? `${dueReviews.length} ${dueReviews.length === 1 ? 'concept is' : 'concepts are'} ready for retrieval`
+                  : 'Nothing is due yet'}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {dueReviews.length
+                  ? 'Review without notes first; your result will adjust the next interval.'
+                  : nextUpcomingReview
+                    ? `Your next review is scheduled for ${reviewDate(nextUpcomingReview.nextReviewAt!)}.`
+                    : 'Complete a knowledge check to schedule a review.'}
+              </p>
+            </div>
+          </div>
+          {dueReviews.length > 0 && (
+            <ol className="mt-4 grid gap-3">
+              {dueReviews.map((node) => (
+                <li key={node.id}>
+                  <Link
+                    to="/nodes/$nodeId"
+                    params={{ nodeId: String(node.id) }}
+                    className="grid gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary sm:grid-cols-[1fr_auto] sm:items-center"
+                  >
+                    <span>
+                      <MathText className="font-medium">{node.title}</MathText>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Last result: {node.masteryScore}% · Previous interval: {node.reviewIntervalDays} {node.reviewIntervalDays === 1 ? 'day' : 'days'}
+                      </span>
+                    </span>
+                    <span className="text-sm font-semibold text-primary">Review now →</span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          )}
+      </section>
 
       {research?.sources?.length ? (
         <details className="pop rounded-2xl bg-card p-5">
@@ -67,6 +121,7 @@ export function PlanPage() {
               <span className="text-right text-sm">
                 <span className={`block font-semibold ${node.masteryScore >= 70 ? 'text-success' : node.masteryScore > 0 ? 'text-warning' : 'text-muted-foreground'}`}>{node.masteryScore}%</span>
                 <span className="text-xs text-muted-foreground">{node.attemptCount ? `${node.attemptCount} checks` : 'Not checked'}</span>
+                {node.nextReviewAt && <span className={`block text-xs ${new Date(node.nextReviewAt).getTime() <= Date.now() ? 'font-semibold text-warning' : 'text-muted-foreground'}`}>{new Date(node.nextReviewAt).getTime() <= Date.now() ? 'Review due' : `Review ${reviewDate(node.nextReviewAt)}`}</span>}
               </span>
             </Link>
           </li>
